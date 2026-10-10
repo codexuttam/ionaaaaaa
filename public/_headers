@@ -1,0 +1,35 @@
+# Response headers for Cloudflare Pages and Netlify (vercel.json mirrors them for Vercel).
+# `vite preview` applies this file too, so the policy is tested in the browser before a deploy.
+# Later rules add to or override earlier ones.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
+  Cache-Control: public, max-age=0, must-revalidate
+
+# hashed build output: safe to cache forever
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# unhashed media: a week, then revalidate in the background
+/bg/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/env/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/stills/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/products/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/fonts/*
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=2592000
+/icons/*
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=2592000
+/og.jpg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/api/*
+  Cache-Control: no-store

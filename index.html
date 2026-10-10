@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-scene="opening">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>IONA — Water, Reimagined.</title>
+    <meta name="description" content="IONA. Water, reimagined. You choose what fills your day. Give a little thought to what fills your glass." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="IONA" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="IONA — Water, Reimagined." />
+    <meta property="og:description" content="IONA. Water, reimagined. You choose what fills your day. Give a little thought to what fills your glass." />
+    <meta property="og:image" content="/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The IONA bottle on a mountain rock at dusk." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="IONA — Water, Reimagined." />
+    <meta name="twitter:description" content="IONA. Water, reimagined. You choose what fills your day. Give a little thought to what fills your glass." />
+    <meta name="twitter:image" content="/og.jpg" />
+    <meta name="theme-color" content="#0B1220" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <!-- the landing picture (dom/Poster.tsx): the same file and the same CORS mode as the backdrop loader (three fetches anonymous), so one download serves the poster and the texture -->
+    <link rel="preload" as="image" imagesrcset="/bg/hero-1440.webp 1600w, /bg/hero-2560.webp 2560w" imagesizes="100vw" fetchpriority="high" crossorigin="anonymous" media="(prefers-reduced-motion: no-preference)" />
+    <link rel="preload" href="/fonts/Satoshi-Light.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Satoshi-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <main style="padding: 10vh 6vw; background: #070e14; color: #f5f7f8; font-family: Satoshi, 'Helvetica Neue', Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.2em; line-height: 1.6">
+        <img src="/bg/hero-1440.webp" alt="" width="1440" height="804" style="display: block; width: 100%; height: auto; margin-bottom: 6vh" />
+        <h1 style="font-weight: 300; letter-spacing: 0.46em" translate="no">IONA</h1>
+        <p>WATER, REIMAGINED.</p>
+        <p>PURER | SMARTER | CLEANER | BRIGHTER<br />FOR A HIGHER TOMORROW.</p>
+        <h2 style="font-weight: 300; margin-top: 6vh">IONIZED</h2>
+        <p>FOR BETTER<br />ABSORPTION</p>
+        <h2 style="font-weight: 300; margin-top: 6vh">ALKALINE<br />pH 8.5+</h2>
+        <p>FOR NATURAL<br />BALANCE</p>
+        <h2 style="font-weight: 300; margin-top: 6vh">CLEAN<br />&amp; PURE</h2>
+        <p>MULTI-STAGE<br />PURIFICATION</p>
+        <h2 style="font-weight: 300; margin-top: 6vh">ESSENTIAL<br />MINERALS</h2>
+        <p>NATURALLY BALANCED<br />FOR A HEALTHIER YOU</p>
+        <h2 style="font-weight: 300; margin-top: 6vh">A HIGHER<br />STANDARD<br />OF WATER</h2>
+        <h2 style="font-weight: 300; margin-top: 6vh">DESIGNED<br />FOR A BRIGHTER<br />TOMORROW</h2>
+        <p style="margin-top: 10vh">IONA<br />WATER, REIMAGINED.</p>
+        <p>Explore · Contact</p>
+        <p>Privacy · Terms</p>
+        <p>© IONA</p>
+      </main>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

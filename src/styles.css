@@ -1,0 +1,2435 @@
+/* IONA — the DOM layer. Tokens, type, chrome, lockups, footer, dialog, stills.
+   Sources: docs/03-visual-system.md, 04-experience-architecture.md, 10-responsive-performance-a11y.md. */
+
+@font-face {
+  font-family: 'Satoshi';
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Satoshi-Light.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Satoshi-Regular.woff2') format('woff2');
+}
+
+:root {
+  --navy: #0b1220;
+  --void: #070e14;
+  --abyss: #001119;
+  --fog: #03141b;
+  --teal-deep: #01151e;
+  --teal: #1e3944;
+  --ridge: #0d1a22;
+  --valley: #4f6e80;
+  --water: #022332;
+  --alkaline: #c9d6de;
+  --alkaline-edge: #8ea6b6;
+  --ice: #d5e4ee;
+  --ice-2: #c8d6e1;
+  --white: #f5f7f8;
+  --white-dim: rgba(245, 247, 248, 0.84);
+  --ink-dim: rgba(26, 28, 31, 0.86);
+  --line: rgba(245, 247, 248, 0.42);
+  /* legibility colour behind type: the film writes the blended scene value every frame (Experience.tsx) */
+  --scrim: #070e14;
+
+  /* motion (emil-design-eng): strong ease-out for UI, ease-in-out for on-screen movement */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --cap: #070708;
+  --ink: #1a1c1f;
+  --label: #f4f7f8;
+
+  --story-vh: 1960;
+  --type-scale: 1;
+  --vignette: 0.45;
+
+  /* type scale (docs/03) */
+  --fs-wordmark: clamp(56px, 8.4vw, 132px);
+  --fs-subline: clamp(13px, 1.25vw, 20px);
+  --fs-hero-support: clamp(10px, 0.72vw, 13px);
+  --fs-title: clamp(26px, 2.7vw, 46px);
+  --fs-support: clamp(14px, 1.08vw, 18px);
+  --fs-closing: clamp(40px, 6vw, 96px);
+  --fs-chrome: 11px;
+
+  --icon: 48px;
+  --inset-x: 6vw;
+  --inset-y: 7vh;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--navy);
+  color: var(--white);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  font-family: 'Satoshi', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-kerning: normal;
+  font-variant-ligatures: none;
+  hyphens: manual;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--ice);
+  outline-offset: 3px;
+}
+
+.sr-only,
+.beats {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.beats {
+  top: 0;
+  left: 0;
+  list-style: none;
+}
+
+.skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  padding: 10px 14px;
+  background: var(--void);
+  color: var(--white);
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transform: translateY(-200%);
+}
+.skip:focus-visible {
+  transform: none;
+}
+
+/* ------------------------------------------------------------------ controls */
+
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--white);
+  opacity: 0.92;
+  transition: opacity 0.28s var(--ease-out);
+}
+.control::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.22em; /* the tracking after the last letter */
+  bottom: 10px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 240ms var(--ease-out);
+}
+.control:focus-visible {
+  opacity: 1;
+}
+.control:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .control:hover {
+    opacity: 1;
+  }
+  .control:hover::after {
+    transform: scaleX(1);
+  }
+}
+.control:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ layers */
+
+#experience {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--void);
+}
+
+#story {
+  position: relative;
+  z-index: 1;
+  height: calc(100vh + var(--story-vh) * 1vh);
+  pointer-events: none;
+}
+
+#grain {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+}
+#grain::before {
+  content: '';
+  position: absolute;
+  inset: -64px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.55 0 0 0 0 0.55 0 0 0 1 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  animation: grain-drift 8s linear infinite;
+}
+@keyframes grain-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-40px, 24px);
+  }
+}
+
+#vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 72% 68% at 50% 50%, transparent 55%, rgba(7, 14, 20, var(--vignette)) 100%);
+  transition: --vignette 0.6s;
+}
+html[data-scene='opening'],
+html[data-scene='cap'],
+html[data-scene='closing'] {
+  --vignette: 0.7;
+}
+
+#mobile-scrim {
+  display: none;
+}
+
+#type-root {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ------------------------------------------------------------------ navigation */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  pointer-events: none;
+  color: var(--white);
+}
+.nav[data-mode='stills'] .nav__bar {
+  background: rgba(11, 18, 32, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+/* film mode: the same frosted ground once the sections after the film are under the bar (Nav.tsx) */
+.nav[data-mode='film'] .nav__bar {
+  transition: background-color 400ms var(--ease-out);
+}
+html[data-bar='solid'] .nav[data-mode='film'] .nav__bar {
+  background: rgba(11, 18, 32, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.nav__bar {
+  position: relative;
+  z-index: 9; /* above the open menu, so Close stays reachable */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: 64px;
+  padding: 0 var(--inset-x);
+  pointer-events: auto;
+}
+.nav__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--ice);
+  opacity: 0.8;
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+  will-change: transform;
+}
+.nav__wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.46em;
+  text-transform: uppercase;
+}
+.nav__links {
+  display: flex;
+  gap: 34px;
+}
+.nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.88;
+  transition: opacity 200ms var(--ease-out);
+}
+.nav__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.22em;
+  bottom: 10px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 240ms var(--ease-out);
+}
+.nav__link:focus-visible,
+.nav__link[data-current] {
+  opacity: 1;
+}
+.nav__link:focus-visible::after,
+.nav__link[data-current]::after {
+  transform: scaleX(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav__link:hover {
+    opacity: 1;
+  }
+  .nav__link:hover::after {
+    transform: scaleX(1);
+  }
+}
+.nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.nav__control {
+  min-width: 44px;
+  justify-content: flex-end;
+}
+.nav__burger {
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+.nav__burger-lines {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 22px;
+}
+.nav__burger-lines i {
+  display: block;
+  height: 1px;
+  background: currentColor;
+  transition: transform 240ms var(--ease-out);
+}
+.nav__burger[aria-expanded='true'] .nav__burger-lines i:first-child {
+  transform: translateY(3px) rotate(45deg);
+}
+.nav__burger[aria-expanded='true'] .nav__burger-lines i:last-child {
+  transform: translateY(-3px) rotate(-45deg);
+}
+.nav__menu {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: calc(100px + env(safe-area-inset-top)) max(var(--inset-x), env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom))
+    max(var(--inset-x), env(safe-area-inset-left));
+  background: rgba(7, 14, 20, 0.94);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  color: var(--white);
+  pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 180ms var(--ease-out),
+    visibility 0s linear 180ms;
+}
+.nav__menu[data-open='true'] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 280ms var(--ease-out),
+    visibility 0s;
+}
+.nav__menu-link,
+.nav__menu-actions {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+.nav__menu[data-open='true'] .nav__menu-link,
+.nav__menu[data-open='true'] .nav__menu-actions {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 520ms var(--ease-out) calc(60ms + var(--i, 0) * 45ms),
+    transform 520ms var(--ease-out) calc(60ms + var(--i, 0) * 45ms),
+    color 200ms var(--ease-out);
+}
+.nav__menu-links {
+  display: grid;
+  gap: 4px;
+}
+.nav__menu-link {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  min-height: 52px;
+  font-size: clamp(26px, 6.5vw, 40px);
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245, 247, 248, 0.78);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav__menu-link[data-current],
+.nav__menu-link:focus-visible {
+  color: var(--white);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav__menu-link:hover {
+    color: var(--white);
+  }
+}
+.nav__menu-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(245, 247, 248, 0.14);
+}
+/* wide: the links sit centred on the page, whatever the widths on either side */
+@media (min-width: 1024px) {
+  .nav__links {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    align-items: center;
+    transform: translateX(-50%);
+  }
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .nav__links {
+    gap: 24px;
+  }
+}
+/* below 1024px the links fold into the menu (Nav.tsx WIDE) */
+@media (max-width: 1023px) {
+  .nav__bar .nav__links,
+  .nav__actions .nav__cta {
+    display: none;
+  }
+  .nav__actions .nav__burger {
+    display: inline-flex;
+  }
+}
+@media (max-width: 759px) {
+  .nav__bar {
+    height: 60px;
+  }
+  .nav__actions {
+    gap: 18px;
+  }
+  /* Motion moves into the menu on phones so the bar never overflows a narrow screen */
+  .nav__bar .nav__control--motion {
+    display: none;
+  }
+}
+@media (max-width: 359px) {
+  .nav__burger-word {
+    display: none;
+  }
+}
+.nav__menu-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+/* the still sequence scrolls the window: hold it while the menu is open */
+html[data-mode='stills'][data-menu='open'] {
+  overflow: hidden;
+}
+/* the one pale beat: the bar switches to ink, like the type */
+html[data-scene='alkaline'] .nav__bar,
+html[data-scene='alkaline'] .nav__bar .control {
+  color: var(--ink);
+}
+html[data-scene='alkaline'] .nav__progress {
+  background: var(--ink);
+  opacity: 0.5;
+}
+/* the filled pill inverts on the pale beat: ink pill, white words */
+html[data-scene='alkaline'] .nav__cta {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--white);
+}
+html[data-scene='alkaline'] .nav__cta:hover,
+html[data-scene='alkaline'] .nav__cta:focus-visible {
+  background: #2c3036;
+  border-color: #2c3036;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+/* Pill buttons. Secondary: frosted glass in the scene colour, readable on any picture.
+   Primary: white fill. Press feedback scales to 0.97 (emil-design-eng); hover only on real pointers. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--white);
+  background: rgba(7, 14, 20, 0.38);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+.btn:focus-visible {
+  border-color: var(--white);
+  background: rgba(245, 247, 248, 0.12);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn--primary {
+  background: var(--white);
+  color: var(--navy);
+  border-color: var(--white);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.btn--primary:focus-visible {
+  background: var(--ice);
+  border-color: var(--ice);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    border-color: var(--white);
+    background: rgba(245, 247, 248, 0.12);
+  }
+  .btn--primary:hover {
+    background: var(--ice);
+    border-color: var(--ice);
+  }
+}
+.btn--small {
+  min-height: 38px;
+  padding: 0 20px;
+  font-size: 11px;
+}
+
+/* ------------------------------------------------------------------ lockups */
+
+.type {
+  position: absolute;
+  inset: 0;
+  text-transform: uppercase;
+  color: var(--white);
+}
+#type-root .type {
+  /* the master timeline owns visibility through autoAlpha; hidden until its first set */
+  visibility: hidden;
+  opacity: 0;
+}
+.type[data-color='ink'] {
+  color: var(--ink);
+}
+
+.type__box {
+  position: absolute;
+  top: 50%;
+  left: 8vw;
+  max-width: 44vw;
+  transform: translateY(-50%);
+  text-align: left;
+}
+.type[data-side='right'] .type__box {
+  left: auto;
+  right: 8vw;
+  text-align: right;
+}
+
+.type[data-side='right'] .type__rule {
+  margin-left: auto;
+  transform-origin: right;
+}
+.type[data-side='center'] .type__box {
+  left: 50%;
+  top: 46%;
+  max-width: none;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.type .line {
+  display: block;
+}
+
+.type__wordmark {
+  font-size: calc(var(--fs-wordmark) * var(--type-scale));
+  font-weight: 300;
+  letter-spacing: 0.46em;
+  line-height: 1;
+  color: var(--white);
+  padding-right: 0.5em;
+  white-space: nowrap;
+}
+.type__wordmark .char {
+  display: inline-block;
+}
+
+.type__subline {
+  margin-top: 0.75em;
+  font-size: calc(var(--fs-subline) * var(--type-scale));
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  line-height: 1.35;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+/* story beats: the section name in capitals, then the headline and the body as sentences */
+.type__title {
+  margin-top: 22px;
+  font-size: calc(var(--fs-title) * var(--type-scale));
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  line-height: 1.12;
+  text-transform: none;
+  text-wrap: pretty;
+}
+.type__support {
+  margin-top: 1.1em;
+  font-size: calc(var(--fs-support) * var(--type-scale));
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.6;
+  text-transform: none;
+  color: var(--white-dim);
+}
+.type[data-side='right'] .type__eyebrow {
+  justify-content: flex-end;
+}
+/* the hero's two sentences under the tagline */
+.type__lede {
+  margin-top: 1.4em;
+  font-size: clamp(15px, 1.15vw, 19px);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.6;
+  text-transform: none;
+  color: var(--white-dim);
+}
+/* the cap and the spotlight stand in the middle of the frame: their words keep to a narrower column
+   (data-scene selectors: the film's lockups and the still sequence's both carry it) */
+[data-scene='cap'] .type__box {
+  max-width: 34vw;
+}
+[data-scene='spotlight'] .type__box {
+  max-width: 30vw;
+}
+/* the film's earlier lines, in spaced capitals */
+.type__title--caps {
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+}
+/* the carton beat: the four words stand in the gap between the carton and the bottle */
+@media (min-width: 1100px) {
+  [data-scene='pack'] .type__box {
+    left: 56.8%;
+    max-width: 18vw;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  [data-scene='pack'] .type__title--caps {
+    font-size: calc(var(--fs-title) * var(--type-scale) * 0.8);
+  }
+}
+/* portrait tablets: the close-up and the underwater bottle fill the narrow frame, so their words take the
+   phones' bottom band, over the phones' shade (Legibility.tsx fades it in with those two beats) */
+@media (min-width: 760px) and (max-width: 1099px) and (orientation: portrait) {
+  [data-scene='facets'] .type__box,
+  [data-scene='underwater'] .type__box {
+    top: auto;
+    bottom: 8vh;
+    left: 7vw;
+    right: 7vw;
+    max-width: none;
+    transform: none;
+    text-align: left;
+  }
+  [data-scene='facets'] .type__rule {
+    margin-left: 0;
+    transform-origin: left;
+  }
+  #mobile-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent 52%, var(--scrim) 76%);
+    opacity: var(--band, 0);
+  }
+}
+/* the film's last frame: the wordmark of the closing */
+.type__wordmark--closing {
+  font-size: calc(var(--fs-closing) * var(--type-scale));
+  letter-spacing: 0.5em;
+}
+.type[data-color='ink'] .type__support {
+  color: var(--ink-dim);
+}
+
+.type__rule {
+  display: block;
+  width: 36px;
+  height: 1px;
+  margin-top: 18px;
+  background: var(--line);
+  transform-origin: left;
+}
+.type[data-color='ink'] .type__rule {
+  background: var(--ink-dim);
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.footer {
+  position: relative;
+  z-index: 6;
+  padding: 10vh var(--inset-x) 5vh;
+  background: var(--navy);
+  color: var(--white);
+  text-transform: uppercase;
+}
+.footer__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.footer__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px 48px;
+  padding-top: 7vh;
+  border-top: 1px solid var(--line);
+}
+.footer__wordmark {
+  font-size: clamp(32px, 4vw, 64px);
+  font-weight: 300;
+  letter-spacing: 0.5em;
+  line-height: 1;
+}
+.footer__subline {
+  margin-top: 16px;
+  font-size: var(--fs-subline);
+  letter-spacing: 0.42em;
+  line-height: 1.35;
+}
+.footer__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.footer__grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 40px;
+  margin-top: 9vh;
+}
+.footer__heading {
+  margin: 0 0 20px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  color: var(--white-dim);
+}
+.footer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.footer__col--story .footer__list {
+  grid-template-columns: 1fr 1fr;
+  column-gap: 32px;
+}
+.footer__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 40px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--white);
+  opacity: 0.72;
+  transition: opacity 200ms var(--ease-out);
+}
+.footer__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.22em;
+  bottom: 8px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 240ms var(--ease-out);
+}
+.footer__link:focus-visible {
+  opacity: 1;
+}
+.footer__link:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .footer__link:hover {
+    opacity: 1;
+  }
+  .footer__link:hover::after {
+    transform: scaleX(1);
+  }
+}
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+  margin-top: 9vh;
+  padding-top: 24px;
+  border-top: 1px solid rgba(245, 247, 248, 0.12);
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: var(--white-dim);
+}
+.footer__bottom p {
+  margin: 0;
+}
+.footer__top-link {
+  opacity: 0.6;
+}
+
+@media (max-width: 1099px) {
+  .footer__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer__col--story {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 759px) {
+  .footer {
+    padding: 8vh 24px 4vh;
+  }
+  .footer__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-top: 48px;
+  }
+  .footer__col--story .footer__list {
+    grid-template-columns: 1fr;
+  }
+  .footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 48px;
+  }
+}
+
+/* ------------------------------------------------------------------ contact */
+
+.contact {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(7, 14, 20, 0.94);
+  color: var(--white);
+  z-index: 10;
+  overscroll-behavior: contain;
+  opacity: 0;
+  transition:
+    opacity 160ms var(--ease-out),
+    overlay 160ms var(--ease-out) allow-discrete,
+    display 160ms var(--ease-out) allow-discrete;
+}
+.contact::backdrop {
+  background: transparent;
+}
+.contact[open] {
+  display: grid;
+  /* room above the panel for the close control; a form taller than the screen scrolls from its top */
+  padding: 80px 0 32px;
+  overflow-y: auto;
+  opacity: 1;
+  transition:
+    opacity 260ms var(--ease-out),
+    overlay 260ms var(--ease-out) allow-discrete,
+    display 260ms var(--ease-out) allow-discrete;
+}
+@starting-style {
+  .contact[open] {
+    opacity: 0;
+  }
+}
+.contact .contact__panel {
+  transform: translateY(10px) scale(0.985);
+  transition: transform 160ms var(--ease-out);
+}
+.contact[open] .contact__panel {
+  transform: none;
+  transition: transform 420ms var(--ease-out);
+}
+@starting-style {
+  .contact[open] .contact__panel {
+    transform: translateY(10px) scale(0.985);
+  }
+}
+.contact__panel {
+  position: relative;
+  width: min(36rem, calc(100vw - 48px));
+  margin: auto;
+  padding: 24px 0;
+  user-select: text;
+}
+.contact__close {
+  position: absolute;
+  right: 0;
+  top: -64px;
+}
+.contact__title {
+  font-size: var(--fs-subline);
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.contact__title:focus-visible {
+  outline: none;
+}
+.contact__intro {
+  max-width: 26rem;
+  margin: 18px auto 0;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-wrap: pretty;
+  color: var(--white-dim);
+}
+.contact__form {
+  margin-top: 40px;
+  display: grid;
+  gap: 22px;
+}
+.contact__field {
+  display: grid;
+  gap: 8px;
+}
+.contact__label {
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--white-dim);
+}
+.contact__field input,
+.contact__field textarea {
+  width: 100%;
+  padding: 12px 0;
+  font: inherit;
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  outline: none;
+  resize: vertical;
+}
+.contact__field input::placeholder,
+.contact__field textarea::placeholder {
+  color: rgba(245, 247, 248, 0.3);
+}
+.contact__field input:focus-visible,
+.contact__field textarea:focus-visible {
+  border-bottom-color: var(--ice);
+  box-shadow: 0 1px 0 0 var(--ice); /* a 2px line: the focus state reads at a glance */
+  outline: none;
+}
+.contact__field [aria-invalid='true'] {
+  border-bottom-color: var(--white);
+}
+.contact__actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 8px;
+}
+.contact__error {
+  color: var(--white-dim);
+}
+.contact__success {
+  margin-top: 40px;
+  text-align: center;
+  font-size: var(--fs-subline);
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------------ stills */
+
+.stills {
+  display: block;
+}
+.stills__scene {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.stills__plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.stills__product {
+  position: absolute;
+  right: 12vw;
+  top: 50%;
+  height: 78vh;
+  width: auto;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+.stills__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to right, rgba(7, 14, 20, 0.78) 0%, rgba(7, 14, 20, 0.5) 28%, transparent 52%);
+}
+.stills__scene[data-side='right'] .stills__scrim {
+  background: linear-gradient(to left, rgba(7, 14, 20, 0.78) 0%, rgba(7, 14, 20, 0.5) 28%, transparent 52%);
+}
+.stills__scene[data-color='ink'] .stills__scrim,
+.stills__scene[data-side='center'] .stills__scrim {
+  background: none;
+}
+.stills__type {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.stills__scene--cap .stills__plate,
+.stills__scene--waterfall .stills__plate {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ breakpoints */
+
+@media (max-width: 1099px) {
+  :root {
+    --type-scale: 0.88;
+  }
+}
+
+@media (max-width: 759px) {
+  :root {
+    --type-scale: 1;
+    --icon: 36px;
+    --inset-x: 24px;
+  }
+  #mobile-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    /* --lift raises the band while the hero is on screen: its lockup (wordmark, two lines, two controls) is the tallest */
+    background: linear-gradient(to bottom, transparent calc(58% - var(--lift, 0%)), var(--scrim) calc(78% - var(--lift, 0%)));
+  }
+  .type__box,
+  .type[data-side='right'] .type__box,
+  .type--hero .type__box {
+    top: 66%;
+    left: 24px;
+    right: 24px;
+    max-width: none;
+    transform: none;
+    text-align: left;
+  }
+  .type[data-side='right'] .type__rule {
+    margin-left: 0;
+    transform-origin: left;
+  }
+  .type[data-side='right'] .type__eyebrow {
+    justify-content: flex-start;
+  }
+  [data-scene='cap'] .type__box,
+  [data-scene='spotlight'] .type__box {
+    max-width: none;
+  }
+  .type__wordmark--closing {
+    font-size: clamp(36px, 11vw, 56px);
+  }
+  .type[data-side='center'] .type__box {
+    top: 46%;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .type__wordmark {
+    font-size: clamp(40px, 12vw, 64px);
+  }
+  .type__title {
+    font-size: clamp(24px, 7vw, 32px);
+  }
+  .type__support {
+    margin-top: 0.7em;
+  }
+  .contact__close {
+    top: -56px;
+  }
+  .stills__scene {
+    display: flex;
+    flex-direction: column;
+  }
+  .stills__plate {
+    position: relative;
+    height: 62vh;
+    flex: none;
+  }
+  .stills__product {
+    right: 50%;
+    top: 31vh;
+    height: 52vh;
+    transform: translate(50%, -50%);
+  }
+  .stills__scrim {
+    display: none;
+  }
+  /* a beat without words lets its picture fill the viewport */
+  .stills__scene:not(:has(.stills__type)) .stills__plate {
+    height: 100vh;
+  }
+  .stills__type {
+    position: relative;
+    inset: auto;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 38vh;
+  }
+  .stills__type .type__box,
+  .stills__type[data-side='right'] .type__box {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+    padding: 24px 24px 40px;
+  }
+  .stills__type[data-side='center'] .type__box {
+    padding: 40vh 24px;
+  }
+}
+
+@media (max-width: 379px) {
+  .type__subline {
+    white-space: normal;
+  }
+}
+
+/* ------------------------------------------------------------------ reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  #grain::before {
+    animation: none;
+  }
+  .control,
+  .control::after,
+  .nav__wordmark,
+  .nav__link {
+    transition: none;
+  }
+}
+
+/* ?clean=1 — the still and Open Graph renders: picture only, no chrome or type */
+html[data-clean='1'] .nav,
+html[data-clean='1'] #legibility,
+html[data-clean='1'] #type-root,
+html[data-clean='1'] #mobile-scrim {
+  display: none !important;
+}
+
+/* stills: the film's own hold frames; a <picture> must not add a box of its own */
+.stills picture {
+  display: contents;
+}
+.stills__plate--frame {
+  object-position: 50% 50%;
+}
+@media (max-width: 759px) {
+  /* the phone frame carries its subject in the top band; the type sits under the crop */
+  .stills__plate--frame {
+    object-position: 50% 0%;
+  }
+}
+
+/* the film carries its own progress line; the browser scrollbar would sit on top of the picture */
+html[data-mode='film'] {
+  scrollbar-width: none;
+}
+html[data-mode='film']::-webkit-scrollbar {
+  display: none;
+}
+
+/* the contact honeypot: off screen for people, present for bots (server/contact.ts drops filled ones) */
+.contact__hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ landing hero */
+
+/* the picture fades in once the shaders are compiled and the first beats are decoded */
+#experience {
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+html[data-ready='1'] #experience {
+  opacity: 1;
+}
+
+.type--hero .type__box {
+  left: 7vw;
+  max-width: 40vw;
+  transform: translateY(-50%);
+}
+.type__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 22px;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  color: var(--white);
+}
+.type__eyebrow::before {
+  content: '';
+  flex: none;
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.type__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+  pointer-events: auto;
+}
+
+.type__cue {
+  /* bottom right of the landing frame */
+  position: absolute;
+  right: var(--inset-x);
+  bottom: 26px;
+}
+.type__scrollcue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--white-dim);
+}
+.type__scrollcue i {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 40px;
+  background: rgba(245, 247, 248, 0.18);
+  overflow: hidden;
+}
+.type__scrollcue i::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--white);
+  animation: cue 2.2s ease-in-out infinite;
+}
+@keyframes cue {
+  to {
+    transform: translateY(200%);
+  }
+}
+
+/* ------------------------------------------------------------------ beat progress (no words) */
+
+/* ------------------------------------------------------------------ landing breakpoints */
+
+@media (min-width: 760px) and (max-width: 1099px) {
+  .type--hero .type__box {
+    max-width: 50vw;
+  }
+}
+@media (max-width: 759px) {
+  .type--hero .type__box {
+    top: auto;
+    bottom: 72px;
+    max-width: none;
+    transform: none;
+  }
+  .type__eyebrow {
+    margin-bottom: 14px;
+  }
+  .type__cta {
+    margin-top: 22px;
+    gap: 12px;
+  }
+  .btn {
+    min-height: 44px;
+    padding: 0 22px;
+  }
+  .type__cue {
+    display: none;
+  }
+  /* the bottom band under the scrim, where the lockups of the other beats sit */
+}
+@media (prefers-reduced-motion: reduce) {
+  .type__scrollcue i::after {
+    animation: none;
+  }
+}
+/* short phones (iPhone SE class): the hero lockup tightens, so it clears the bottle */
+@media (max-width: 759px) and (max-height: 700px) {
+  .type--hero .type__box {
+    bottom: 56px;
+  }
+  .type--hero .type__lede {
+    margin-top: 0.9em;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .type__cta {
+    margin-top: 16px;
+    gap: 10px;
+  }
+}
+
+/* ------------------------------------------------------------------ legibility layer (Legibility.tsx) */
+
+#legibility {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.legibility__top,
+.legibility__bottom,
+.legibility__center {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.legibility__top {
+  top: 0;
+  height: 150px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--scrim) 74%, transparent) 0%,
+    color-mix(in srgb, var(--scrim) 50%, transparent) 45%,
+    transparent 100%
+  );
+}
+.legibility__bottom {
+  bottom: 0;
+  height: max(230px, 32vh);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--scrim) 78%, transparent) 0%,
+    color-mix(in srgb, var(--scrim) 52%, transparent) 38%,
+    transparent 100%
+  );
+}
+.legibility__center {
+  top: 0;
+  bottom: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse 44% 26% at 50% 45%, color-mix(in srgb, var(--scrim) 70%, transparent) 0%, transparent 100%);
+}
+@media (max-width: 759px) {
+  /* the phone scrim already carries the bottom band */
+  .legibility__bottom {
+    display: none;
+  }
+}
+
+/* the hero notes sit on frosted glass in the beat's legibility colour: readable over a bright sky */
+
+/* ------------------------------------------------------------------ touch, overscroll, safe areas */
+
+.control,
+.nav__link,
+.footer__link,
+.nav__wordmark {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+html {
+  /* focused controls never hide under the fixed bar */
+  scroll-padding-top: 88px;
+}
+@media (pointer: fine) {
+  /* no rubber-band at the ends of the film on trackpads; touch keeps pull-to-refresh */
+  html {
+    overscroll-behavior: none;
+  }
+}
+/* notches and home indicators (viewport-fit=cover) */
+.nav__bar {
+  height: calc(64px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(var(--inset-x), env(safe-area-inset-left));
+  padding-right: max(var(--inset-x), env(safe-area-inset-right));
+}
+
+.footer {
+  padding-bottom: calc(5vh + env(safe-area-inset-bottom));
+}
+@media (max-width: 759px) {
+  .nav__bar {
+    height: calc(60px + env(safe-area-inset-top));
+  }
+  .type--hero .type__box {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 759px) and (max-height: 620px) {
+  .type--hero .type__box {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact .contact__panel,
+  .contact[open] .contact__panel {
+    transform: none;
+    transition: none;
+  }
+  .nav__menu-link,
+  .nav__menu-actions,
+  .nav__menu[data-open='true'] .nav__menu-link,
+  .nav__menu[data-open='true'] .nav__menu-actions {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ the water (Pillars.tsx) */
+
+/* the section rises out of the last frame of the film */
+
+/* a hairline runs along the top edge on hover (real pointers only) */
+
+/* reveal: the head, then the cards in sequence (staggered by --i) */
+
+/* ------------------------------------------------------------------ the range (Range.tsx) */
+
+.range {
+  position: relative;
+  z-index: 6; /* same layer as the water section above it */
+  padding: 0 var(--inset-x) 16vh;
+  background: var(--navy);
+  color: var(--white);
+  overflow: hidden;
+}
+/* a cool pool of light under the cards, the film's valley blue */
+.range::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(64% 46% at 50% 64%, rgba(79, 110, 128, 0.2), rgba(79, 110, 128, 0) 72%);
+  pointer-events: none;
+}
+.range__inner {
+  position: relative;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 14vh;
+  border-top: 1px solid rgba(245, 247, 248, 0.1);
+}
+.range__head {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: end;
+  gap: 28px 64px;
+}
+.range__eyebrow {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+}
+.range__eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.range__title {
+  margin: 0;
+  font-size: clamp(28px, 2.9vw, 50px);
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.range__title .line {
+  display: block;
+}
+.range__intro {
+  justify-self: end;
+  max-width: 30rem;
+}
+
+/* the prelaunch notice: a lit dot and the line, framed so it reads as the state of the product */
+.range__status {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 22px 0 0;
+  padding: 14px 18px;
+  border: 1px solid rgba(245, 247, 248, 0.16);
+  border-radius: 14px;
+  background: rgba(213, 228, 238, 0.05);
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  text-wrap: pretty;
+}
+.range__status::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ice);
+  box-shadow: 0 0 0 4px rgba(213, 228, 238, 0.12);
+  transform: translateY(-1px);
+}
+.range__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 9vh 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* one card: a lit stage with the bottle, then the specification */
+.product {
+  --light: 0.5;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid rgba(245, 247, 248, 0.1);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(213, 228, 238, 0.07), rgba(213, 228, 238, 0.015) 56%, rgba(213, 228, 238, 0.035));
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 600ms var(--ease-out),
+    border-color 300ms var(--ease-out);
+}
+/* a hairline draws across the top edge on hover, as on the pillars */
+.product::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 28px;
+  right: 28px;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(90deg, rgba(213, 228, 238, 0), var(--ice), rgba(213, 228, 238, 0));
+  transform: scaleX(0);
+  transition: transform 700ms var(--ease-out);
+}
+.product__stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: clamp(320px, 30vw, 440px);
+  padding-bottom: 36px;
+}
+.product__pool {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(52% 44% at 50% 76%, rgba(213, 228, 238, 0.17), rgba(213, 228, 238, 0) 70%);
+  opacity: 0.75;
+  transition: opacity 500ms var(--ease-out);
+}
+.product__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  width: calc(170px * var(--h));
+  height: 18px;
+  margin-left: calc(-85px * var(--h));
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+  animation: range-shadow 6.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -2.13s);
+}
+.product__float {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  animation: range-float 6.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -2.13s);
+}
+/* each bottle at its real height relative to the tallest, on a shared baseline */
+.product__bottle {
+  position: relative;
+  height: calc(var(--h) * 88%);
+  aspect-ratio: 2 / 3;
+  transform-origin: 50% 100%;
+  transition: transform 700ms var(--ease-out);
+}
+.product__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
+}
+/* the highlight: a band of light masked by the photograph's alpha, so it only lands on the glass */
+.product__glint {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background: linear-gradient(104deg, rgba(255, 255, 255, 0) 46.5%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 255, 255, 0) 53.5%) no-repeat;
+  background-size: 300% 100%;
+  /* --light 0..1 puts the band from the left edge to the right edge of the bottle */
+  background-position: calc((1.5 - var(--light)) * 50%) 0;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 400ms var(--ease-out),
+    background-position 900ms var(--ease-out);
+}
+.product__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 6px 32px 32px;
+}
+.product__tag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--white-dim);
+}
+.product__tag::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.product__size {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0 0;
+  font-size: clamp(44px, 4vw, 64px);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.product__unit {
+  font-size: 0.3em;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  color: var(--white-dim);
+}
+.product__name {
+  margin: 16px 0 0;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+.product__text {
+  margin: 16px 0 0;
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  color: var(--white-dim);
+  text-wrap: pretty;
+}
+.product__specs {
+  margin: 24px 0 28px;
+  padding: 0;
+  border-top: 1px solid rgba(245, 247, 248, 0.12);
+}
+.product__spec {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(245, 247, 248, 0.08);
+}
+.product__spec dt {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--white-dim);
+}
+.product__spec dd {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.product__join {
+  width: 100%;
+  margin-top: auto;
+}
+/* the hospitality enquiry: one line and its button, under the cards */
+
+@media (hover: hover) and (pointer: fine) {
+  .product:hover {
+    transform: translateY(-6px);
+    border-color: rgba(245, 247, 248, 0.28);
+  }
+  .product:hover::before {
+    transform: scaleX(1);
+  }
+  .product:hover .product__pool {
+    opacity: 1;
+  }
+  .product:hover .product__glint {
+    opacity: 0.6;
+  }
+  .product:hover .product__bottle {
+    transform: scale(1.035);
+  }
+}
+@keyframes range-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes range-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.84);
+    opacity: 0.66;
+  }
+}
+
+/* reveal: the head, then the cards, then each bottle rises in and the light passes over it once.
+   Animations (not transitions) so the stagger never delays the hover response afterwards. */
+.range:not([data-in]) .range__head > *,
+.range:not([data-in]) .product {
+  opacity: 0;
+}
+.range[data-in] .range__head > * {
+  animation: range-rise 900ms var(--ease-out) backwards;
+}
+.range[data-in] .range__head > :nth-child(2) {
+  animation-delay: 80ms;
+}
+.range[data-in] .range__head > :nth-child(3) {
+  animation-delay: 160ms;
+}
+.range[data-in] .product {
+  animation: range-rise 1000ms var(--ease-out) backwards;
+  animation-delay: calc(240ms + var(--i) * 110ms);
+}
+
+.range[data-in] .product__bottle {
+  animation: range-bottle 1300ms var(--ease-out) backwards;
+  animation-delay: calc(480ms + var(--i) * 140ms);
+}
+.range[data-in] .product__glint {
+  animation: range-sweep 1700ms var(--ease-in-out) backwards;
+  animation-delay: calc(1250ms + var(--i) * 180ms);
+}
+@keyframes range-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@keyframes range-bottle {
+  from {
+    opacity: 0;
+    transform: translateY(36px) scale(0.96);
+    filter: blur(6px);
+  }
+}
+@keyframes range-sweep {
+  from {
+    opacity: 0;
+    background-position: 100% 0;
+  }
+  20% {
+    opacity: 0.75;
+  }
+  80% {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 0;
+    background-position: 0% 0;
+  }
+}
+
+/* tablets: the head in one column, the two cards still side by side */
+@media (max-width: 1099px) {
+  .range__head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .range__intro {
+    justify-self: start;
+  }
+  .range__grid {
+    gap: 16px;
+  }
+}
+@media (max-width: 759px) {
+  .range {
+    padding: 0 24px 12vh;
+  }
+  .range__inner {
+    padding-top: 10vh;
+  }
+  /* phones: the two cards one above the other */
+  .range__grid {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 44px;
+  }
+  .product {
+    border-radius: 24px;
+  }
+  .product__stage {
+    height: 330px;
+  }
+  .product__body {
+    padding: 4px 24px 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .range:not([data-in]) .range__head > *,
+  .range:not([data-in]) .product {
+    opacity: 1;
+  }
+  .range[data-in] .range__head > *,
+  .range[data-in] .product,
+  .range[data-in] .product__bottle,
+  .range[data-in] .product__glint,
+  .product__float,
+  .product__shadow {
+    animation: none;
+  }
+  .product,
+  .product::before,
+  .product__glint {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ contact: inline errors */
+
+:root {
+  --alert: #ffb4a8; /* 11:1 on the dialog ground */
+}
+.contact__field [aria-invalid='true'] {
+  border-bottom-color: var(--alert);
+}
+.contact__hint {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--alert);
+}
+.contact__error {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--alert);
+}
+
+/* ------------------------------------------------------------------ loader (Loader.tsx) */
+
+/* The film loads under a dark field: the wordmark breathes and a hairline across the top of the page
+   fills. Once everything the film opens on is in, the field lifts off it (html[data-loaded]). */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--void);
+  transition:
+    opacity 900ms var(--ease-out),
+    visibility 0s linear 900ms;
+}
+html[data-loaded='1'] #loader {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(245, 247, 248, 0.1);
+}
+.loader__bar i {
+  position: absolute;
+  inset: 0;
+  background: var(--white);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.loader__word {
+  margin-right: -0.62em; /* the tracking after the last letter */
+  font-size: clamp(26px, 3.4vw, 44px);
+  font-weight: 300;
+  letter-spacing: 0.62em;
+  color: var(--white);
+  animation: loader-breathe 2.4s ease-in-out infinite alternate;
+}
+@keyframes loader-breathe {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader__word {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* ------------------------------------------------------------------ landscape phones */
+
+/* short, wide screens (a phone on its side): a slimmer bar, a compact lockup, no ticker or cue */
+@media (max-height: 520px) and (orientation: landscape) {
+  .nav__bar {
+    height: calc(52px + env(safe-area-inset-top));
+  }
+  .type__cue {
+    display: none;
+  }
+  .type--hero .type__box {
+    top: 56%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+  .type__wordmark {
+    font-size: clamp(34px, 6.6vw, 54px);
+  }
+  .type__subline {
+    margin-top: 0.5em;
+  }
+  .type__lede {
+    margin-top: 0.7em;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .type__cta {
+    margin-top: 12px;
+  }
+  .type__support {
+    font-size: 13px;
+  }
+  .btn {
+    min-height: 40px;
+    padding: 0 20px;
+  }
+  .type__title {
+    font-size: clamp(22px, 4vw, 32px);
+  }
+}
+
+/* ------------------------------------------------------------------ hero intro (CSS: runs on the compositor) */
+
+/* The landing lockup is visible from the first paint (the timeline only dissolves it on the way out);
+   its parts rise in once TypeRoot.tsx sets html[data-intro]. CSS keyframes keep running while three
+   compiles shaders on the main thread in the first seconds; a JS timeline would stall. */
+#type-root .type--hero {
+  visibility: visible;
+  opacity: 1;
+}
+@keyframes iona-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+html:not([data-intro]) .type--hero .char,
+html:not([data-intro]) .type--hero [data-anim='subline'],
+html:not([data-intro]) .type--hero [data-anim='lede'],
+html:not([data-intro]) .type--hero [data-anim='cta'],
+html:not([data-intro]) .type--hero [data-anim='cue'] {
+  opacity: 0.01;
+}
+/* Before the intro the parts wait at 1% (invisible to the eye), not 0: Chrome skips painting invisible layers,
+   so the wide masked ticker used to be rasterized the moment it appeared (an 80-90 ms gap at the end of the
+   intro). At 1% everything is painted ahead; the tail keyframe starts from the same 1%. */
+@keyframes iona-rise-tail {
+  from {
+    opacity: 0.01;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-intro='play'] .type--hero .char {
+  animation: iona-rise 1200ms var(--ease-out) both;
+  animation-delay: calc(250ms + var(--ci, 0) * 90ms);
+}
+html[data-intro='play'] .type--hero [data-anim='subline'] {
+  animation: iona-rise 1000ms var(--ease-out) 950ms both;
+}
+
+html[data-intro='play'] .type--hero [data-anim='lede'] {
+  animation: iona-rise 1000ms var(--ease-out) 1150ms both;
+}
+html[data-intro='play'] .type--hero [data-anim='cta'] {
+  animation: iona-rise 1000ms var(--ease-out) 1350ms both;
+}
+
+html[data-intro='play'] .type--hero [data-anim='cue'] {
+  animation: iona-rise-tail 1200ms var(--ease-out) 1700ms both;
+}
+
+/* The kinetic word: one shared 11.6 s cycle (four words x 2.9 s); each word is phase-shifted into it by
+   its animation-delay (typeBlocks.tsx). A word holds 2.2 s, leaves upward (ease-in) while the next rises
+   (ease-out), so one is always readable. */
+
+/* it holds while the pointer or the keyboard is on the lockup (WCAG 2.2.2), and whenever the hero is off screen */
+
+/* a deep link lands on another beat: the hero lockup stays hidden until the master timeline takes it over */
+html[data-landing='deep'] #type-root .type--hero {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* The film grain lives in the post chain (Post.tsx); this DOM layer remains only for the low tier, which has
+   no post chain, and without its blend mode: mix-blend-mode over a WebGL canvas cost about 3 ms a frame. */
+html:not([data-tier='low']) #grain {
+  display: none;
+}
+#grain {
+  mix-blend-mode: normal;
+  opacity: 0.05;
+}
+
+/* ------------------------------------------------------------------ the invitation (Invitation.tsx) */
+
+/* 10 / hospitality: the range's language, a headline on the left and the line and the button on the right */
+.trade {
+  position: relative;
+  z-index: 6;
+  padding: 0 var(--inset-x) 14vh;
+  background: var(--navy);
+  color: var(--white);
+}
+.trade__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: end;
+  gap: 28px 64px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 12vh;
+  border-top: 1px solid rgba(245, 247, 248, 0.1);
+}
+.trade__eyebrow {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-size: var(--fs-chrome);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+}
+.trade__eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.trade__title {
+  margin: 0;
+  font-size: clamp(28px, 2.9vw, 50px);
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.trade__title .line,
+.trade__body .line,
+.final__title .line {
+  display: block;
+}
+.trade__side {
+  display: grid;
+  justify-items: start;
+  gap: 28px;
+  max-width: 30rem;
+  justify-self: end;
+}
+.trade__body {
+  margin: 0;
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: var(--white-dim);
+  text-wrap: pretty;
+}
+.trade__body .line + .line {
+  margin-top: 0.6em;
+}
+
+/* 11 / the final scene: the closing ripple, the launch signup over it, the wordmark under it */
+.final {
+  position: relative;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 16vh var(--inset-x);
+  overflow: hidden;
+  isolation: isolate;
+  background: #070e14;
+  color: var(--white);
+  text-align: center;
+}
+.final__plate {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.final__plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.04);
+  transition: transform 6s var(--ease-out);
+}
+/* a shade over the water so the words read, deepest where they stand */
+.final__plate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 60% at 50% 42%, rgba(7, 14, 20, 0.72), rgba(7, 14, 20, 0.35) 70%, rgba(7, 14, 20, 0.6));
+}
+.final[data-in] .final__plate img {
+  transform: scale(1.12);
+  transition-duration: 14s;
+}
+.final__inner {
+  max-width: 44rem;
+}
+.final__title {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 58px);
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.final__body {
+  max-width: 32rem;
+  margin: 26px auto 0;
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: var(--white-dim);
+  text-wrap: pretty;
+}
+.final__action {
+  margin-top: 36px;
+}
+.final__wordmark {
+  margin: 14vh 0 0;
+  padding-left: 0.5em;
+  font-size: clamp(40px, 5.6vw, 88px);
+  font-weight: 300;
+  letter-spacing: 0.5em;
+  line-height: 1;
+}
+.final__subline {
+  margin: 18px 0 0;
+  padding-left: 0.42em;
+  font-size: var(--fs-subline);
+  font-weight: 300;
+  letter-spacing: 0.42em;
+}
+
+/* both sections rise in once, the way the range does */
+.trade:not([data-in]) .trade__inner > *,
+.final:not([data-in]) .final__inner > * {
+  opacity: 0;
+}
+.trade[data-in] .trade__inner > * {
+  animation: range-rise 900ms var(--ease-out) backwards;
+}
+.trade[data-in] .trade__inner > :nth-child(2) {
+  animation-delay: 90ms;
+}
+.trade[data-in] .trade__inner > :nth-child(3) {
+  animation-delay: 180ms;
+}
+.final[data-in] .final__inner > * {
+  animation: range-rise 1100ms var(--ease-out) backwards;
+}
+.final[data-in] .final__inner > :nth-child(2) {
+  animation-delay: 120ms;
+}
+.final[data-in] .final__inner > :nth-child(3) {
+  animation-delay: 240ms;
+}
+.final[data-in] .final__inner > :nth-child(4) {
+  animation-delay: 520ms;
+}
+.final[data-in] .final__inner > :nth-child(5) {
+  animation-delay: 640ms;
+}
+
+@media (max-width: 1099px) {
+  .trade__inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .trade__side {
+    justify-self: start;
+  }
+}
+@media (max-width: 759px) {
+  .trade {
+    padding: 0 24px 10vh;
+  }
+  .trade__inner {
+    padding-top: 10vh;
+  }
+  .trade__action {
+    width: 100%;
+  }
+  .trade__side {
+    justify-items: stretch;
+  }
+  .final {
+    padding: 14vh 24px;
+  }
+  .final__action {
+    width: 100%;
+  }
+  .final__wordmark {
+    margin-top: 10vh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trade:not([data-in]) .trade__inner > *,
+  .final:not([data-in]) .final__inner > * {
+    opacity: 1;
+  }
+  .trade[data-in] .trade__inner > *,
+  .final[data-in] .final__inner > * {
+    animation: none;
+  }
+  .final__plate img,
+  .final[data-in] .final__plate img {
+    transform: none;
+    transition: none;
+  }
+}

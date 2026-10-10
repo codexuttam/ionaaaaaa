@@ -1,0 +1,14 @@
+# dependencies and build output
+node_modules
+dist
+
+# environment (keep the example)
+.env
+.env.*
+!.env.example
+
+# editors and OS
+.DS_Store
+Thumbs.db
+.vscode
+.idea
