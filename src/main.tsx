@@ -56,11 +56,35 @@ class FilmBoundary extends Component<BoundaryProps, { failed: boolean }> {
   }
 }
 
+import { AdminDashboard } from './admin/AdminDashboard'
+
 /** Film when motion is allowed and WebGL works; otherwise the still sequence. */
 function Root() {
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const p = window.location.pathname.replace(/\/+$/, '')
+    return p === '/sidadmin' || window.location.hash === '#sidadmin'
+  })
   const [reduced, setReduced] = useState(reducedQuery.matches)
   const [failed, setFailed] = useState(!glOk)
+
   useEffect(() => {
+    const checkRoute = () => {
+      const p = window.location.pathname.replace(/\/+$/, '')
+      setIsAdmin(p === '/sidadmin' || window.location.hash === '#sidadmin')
+    }
+    window.addEventListener('popstate', checkRoute)
+    window.addEventListener('hashchange', checkRoute)
+    return () => {
+      window.removeEventListener('popstate', checkRoute)
+      window.removeEventListener('hashchange', checkRoute)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isAdmin) {
+      document.documentElement.dataset.mode = 'admin'
+      return
+    }
     const onChange = () => setReduced(reducedQuery.matches)
     reducedQuery.addEventListener('change', onChange)
     const onLost = (e: Event) => {
@@ -71,10 +95,18 @@ function Root() {
       reducedQuery.removeEventListener('change', onChange)
       window.removeEventListener('webglcontextlost', onLost, true)
     }
-  }, [])
+  }, [isAdmin])
+
   useEffect(() => {
-    document.documentElement.dataset.mode = reduced || failed ? 'stills' : 'film'
-  }, [reduced, failed])
+    if (!isAdmin) {
+      document.documentElement.dataset.mode = reduced || failed ? 'stills' : 'film'
+    }
+  }, [isAdmin, reduced, failed])
+
+  if (isAdmin) {
+    return <AdminDashboard />
+  }
+
   if (reduced || failed) return <Stills />
   return (
     <FilmBoundary onError={() => setFailed(true)}>

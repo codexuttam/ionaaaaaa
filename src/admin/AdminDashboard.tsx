@@ -1,0 +1,624 @@
+import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import './admin.css'
+
+interface WaitlistRecord {
+  _id: string
+  name: string
+  email: string
+  city?: string
+  status?: string
+  source?: string
+  createdAt: string
+}
+
+interface BulkRecord {
+  _id: string
+  name: string
+  email: string
+  city?: string
+  business?: string
+  message?: string
+  status?: string
+  source?: string
+  createdAt: string
+}
+
+interface ContactRecord {
+  _id: string
+  name: string
+  email: string
+  message: string
+  status?: string
+  source?: string
+  createdAt: string
+}
+
+interface AllRecord {
+  _id: string
+  kind: 'contact' | 'launch' | 'hospitality'
+  name: string
+  email: string
+  city?: string
+  business?: string
+  message?: string
+  createdAt: string
+}
+
+interface DashboardData {
+  stats: {
+    totalWaitlist: number
+    totalBulkOrders: number
+    totalContacts: number
+    totalAll: number
+  }
+  waitlists: WaitlistRecord[]
+  bulkOrders: BulkRecord[]
+  contacts: ContactRecord[]
+  allSubmissions: AllRecord[]
+}
+
+type TabType = 'waitlist' | 'bulk' | 'contact' | 'all'
+
+function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows || rows.length === 0) return
+  const headers = Object.keys(rows[0])
+  const csvLines = [
+    headers.join(','),
+    ...rows.map((row) =>
+      headers
+        .map((h) => {
+          const val = row[h] ?? ''
+          const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
+          return `"${str.replace(/"/g, '""')}"`
+        })
+        .join(',')
+    ),
+  ]
+  const blob = new Blob([csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
+export function AdminDashboard() {
+  const [token, setToken] = useState<string>(() => sessionStorage.getItem('iona_admin_token') || '')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabType>('waitlist')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault()
+    setLoginError('')
+    setIsLoggingIn(true)
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const result = await res.json()
+      if (res.ok && result.ok && result.token) {
+        setToken(result.token)
+        sessionStorage.setItem('iona_admin_token', result.token)
+      } else {
+        setLoginError(result.error || 'Invalid password. Please try again.')
+      }
+    } catch {
+      setLoginError('Could not connect to server. Check your network.')
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleLogout = () => {
+    setToken('')
+    sessionStorage.removeItem('iona_admin_token')
+    setData(null)
+  }
+
+  const fetchData = async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/data', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const result = await res.json()
+      if (res.ok && result.ok && result.data) {
+        setData(result.data)
+      } else if (res.status === 401) {
+        handleLogout()
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (token) {
+      fetchData()
+    }
+  }, [token])
+
+  const handleDelete = async (collection: string, id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this record?')) return
+    setDeletingId(id)
+    try {
+      const res = await fetch('/api/admin/delete', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ collection, id }),
+      })
+      if (res.ok) {
+        if (selectedRecord && (selectedRecord._id as string) === id) {
+          setSelectedRecord(null)
+        }
+        await fetchData()
+      } else {
+        alert('Could not delete record.')
+      }
+    } catch {
+      alert('Network error while deleting.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const currentRecords = useMemo(() => {
+    if (!data) return []
+    let list: Record<string, unknown>[] = []
+    if (activeTab === 'waitlist') list = data.waitlists as unknown as Record<string, unknown>[]
+    else if (activeTab === 'bulk') list = data.bulkOrders as unknown as Record<string, unknown>[]
+    else if (activeTab === 'contact') list = data.contacts as unknown as Record<string, unknown>[]
+    else list = data.allSubmissions as unknown as Record<string, unknown>[]
+
+    if (!searchTerm.trim()) return list
+
+    const s = searchTerm.toLowerCase()
+    return list.filter((r) =>
+      Object.values(r).some((v) => typeof v === 'string' && v.toLowerCase().includes(s))
+    )
+  }, [data, activeTab, searchTerm])
+
+  const handleExport = () => {
+    if (!currentRecords.length) {
+      alert('No records available to export.')
+      return
+    }
+    const cleanRows = currentRecords.map((r) => {
+      const { _id, ...rest } = r
+      return {
+        id: _id,
+        ...rest,
+        createdAt: formatDate((r.createdAt as string) || ''),
+      }
+    })
+    const dateStr = new Date().toISOString().slice(0, 10)
+    downloadCsv(`iona_${activeTab}_records_${dateStr}.csv`, cleanRows)
+  }
+
+  // 1. Login View
+  if (!token) {
+    return (
+      <div className="admin-root">
+        <div className="admin-login-wrapper">
+          <div className="admin-login-card">
+            <div className="admin-brand-badge">
+              <span className="dot" />
+              <span>IONA Portal</span>
+            </div>
+            <h1 className="admin-login-title">Owner Access</h1>
+            <p className="admin-login-sub">Enter the administrator password to view database records and analytics.</p>
+
+            {loginError && <div className="admin-error-msg">{loginError}</div>}
+
+            <form onSubmit={handleLogin}>
+              <div className="admin-form-group">
+                <label className="admin-label" htmlFor="admin-pwd">
+                  Security Password
+                </label>
+                <div className="admin-input-wrapper">
+                  <input
+                    id="admin-pwd"
+                    className="admin-input"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter password..."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="admin-toggle-pwd"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button className="admin-btn" type="submit" disabled={isLoggingIn}>
+                {isLoggingIn ? 'Authenticating...' : 'Unlock Portal'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Dashboard View
+  const stats = data?.stats || {
+    totalWaitlist: 0,
+    totalBulkOrders: 0,
+    totalContacts: 0,
+    totalAll: 0,
+  }
+
+  return (
+    <div className="admin-root">
+      <div className="admin-container">
+        {/* Top Navbar */}
+        <header className="admin-nav">
+          <div className="admin-logo-group">
+            <h1 className="admin-brand-title">IONA</h1>
+            <div className="admin-chip">
+              <span className="pulse-dot" />
+              <span>Live DB Connected</span>
+            </div>
+          </div>
+
+          <div className="admin-nav-actions">
+            <a href="/" className="admin-secondary-btn">
+              <span>&larr; View Website</span>
+            </a>
+            <button type="button" className="admin-secondary-btn" onClick={fetchData} title="Refresh records">
+              <span>{loading ? 'Refreshing...' : '↻ Refresh'}</span>
+            </button>
+            <button type="button" className="admin-secondary-btn" onClick={handleLogout}>
+              <span>Logout</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Stats Grid */}
+        <section className="admin-stats-grid">
+          <div className="admin-stat-card">
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">Launch Waitlist</span>
+              <span className="admin-stat-icon">🚀</span>
+            </div>
+            <div className="admin-stat-value">{stats.totalWaitlist}</div>
+            <p className="admin-stat-desc">Users signed up for product launch</p>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">Bulk Orders</span>
+              <span className="admin-stat-icon">🏢</span>
+            </div>
+            <div className="admin-stat-value">{stats.totalBulkOrders}</div>
+            <p className="admin-stat-desc">Hotels, restaurants & wholesale enquiries</p>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">General Contact</span>
+              <span className="admin-stat-icon">✉️</span>
+            </div>
+            <div className="admin-stat-value">{stats.totalContacts}</div>
+            <p className="admin-stat-desc">Direct customer inquiries & messages</p>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">Total Submissions</span>
+              <span className="admin-stat-icon">📊</span>
+            </div>
+            <div className="admin-stat-value">{stats.totalAll}</div>
+            <p className="admin-stat-desc">All lifetime records across forms</p>
+          </div>
+        </section>
+
+        {/* Controls Card */}
+        <section className="admin-controls-card">
+          <div className="admin-tabs">
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'waitlist' ? 'active' : ''}`}
+              onClick={() => setActiveTab('waitlist')}
+            >
+              <span>Waitlist</span>
+              <span className="admin-tab-count">{stats.totalWaitlist}</span>
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'bulk' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bulk')}
+            >
+              <span>Bulk Orders</span>
+              <span className="admin-tab-count">{stats.totalBulkOrders}</span>
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'contact' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contact')}
+            >
+              <span>Contact Messages</span>
+              <span className="admin-tab-count">{stats.totalContacts}</span>
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              <span>All Submissions</span>
+              <span className="admin-tab-count">{stats.totalAll}</span>
+            </button>
+          </div>
+
+          <div className="admin-search-actions">
+            <input
+              type="text"
+              className="admin-search-box"
+              placeholder="Search by name, email, city..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button type="button" className="admin-action-btn export" onClick={handleExport}>
+              <span>⬇ Export CSV</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Data Table */}
+        <div className="admin-table-container">
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  {activeTab === 'bulk' && <th>Business / Venue</th>}
+                  {(activeTab === 'waitlist' || activeTab === 'bulk') && <th>City</th>}
+                  {activeTab === 'all' && <th>Category</th>}
+                  {(activeTab === 'bulk' || activeTab === 'contact' || activeTab === 'all') && (
+                    <th>Message / Requirements</th>
+                  )}
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="admin-empty-state">
+                        <div className="admin-empty-icon">💧</div>
+                        <div>No submissions found in this section yet.</div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  currentRecords.map((row) => {
+                    const id = row._id as string
+                    const targetCollection =
+                      activeTab === 'waitlist'
+                        ? 'waitlists'
+                        : activeTab === 'bulk'
+                          ? 'bulk_orders'
+                          : activeTab === 'contact'
+                            ? 'contacts'
+                            : 'all_submissions'
+
+                    return (
+                      <tr key={id}>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDate((row.createdAt as string) || '')}</td>
+                        <td style={{ fontWeight: 600, color: '#f5f7f8' }}>{(row.name as string) || '-'}</td>
+                        <td>
+                          <a
+                            href={`mailto:${row.email}`}
+                            style={{ color: '#38bdf8', textDecoration: 'none' }}
+                            title="Click to send email"
+                          >
+                            {(row.email as string) || '-'}
+                          </a>
+                        </td>
+
+                        {activeTab === 'bulk' && <td>{(row.business as string) || '-'}</td>}
+
+                        {(activeTab === 'waitlist' || activeTab === 'bulk') && (
+                          <td>{(row.city as string) || '-'}</td>
+                        )}
+
+                        {activeTab === 'all' && (
+                          <td>
+                            <span
+                              className={`admin-badge ${
+                                row.kind === 'launch'
+                                  ? 'waitlist'
+                                  : row.kind === 'hospitality'
+                                    ? 'bulk'
+                                    : 'contact'
+                              }`}
+                            >
+                              {row.kind === 'launch'
+                                ? 'Waitlist'
+                                : row.kind === 'hospitality'
+                                  ? 'Bulk Order'
+                                  : 'Contact'}
+                            </span>
+                          </td>
+                        )}
+
+                        {(activeTab === 'bulk' || activeTab === 'contact' || activeTab === 'all') && (
+                          <td>
+                            <div
+                              className="admin-truncate"
+                              title={(row.message as string) || ''}
+                              onClick={() => setSelectedRecord(row)}
+                              style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}
+                            >
+                              {(row.message as string) || '-'}
+                            </div>
+                          </td>
+                        )}
+
+                        <td>
+                          <span
+                            className={`admin-badge ${
+                              activeTab === 'waitlist'
+                                ? 'waitlist'
+                                : activeTab === 'bulk'
+                                  ? 'bulk'
+                                  : 'contact'
+                            }`}
+                          >
+                            {(row.status as string) || 'Received'}
+                          </span>
+                        </td>
+
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <button
+                            type="button"
+                            className="admin-delete-btn"
+                            onClick={() => setSelectedRecord(row)}
+                            title="View details"
+                            style={{ marginRight: '6px' }}
+                          >
+                            👁 View
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-delete-btn"
+                            disabled={deletingId === id}
+                            onClick={() => handleDelete(targetCollection, id)}
+                            title="Delete record"
+                          >
+                            {deletingId === id ? '...' : '✕'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Details Modal */}
+        {selectedRecord && (
+          <div className="admin-modal-backdrop" onClick={() => setSelectedRecord(null)}>
+            <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="admin-modal-header">
+                <h3 className="admin-modal-title">Submission Details</h3>
+                <button type="button" className="admin-modal-close" onClick={() => setSelectedRecord(null)}>
+                  ✕
+                </button>
+              </div>
+
+              <div className="admin-detail-row">
+                <div className="admin-detail-label">Received At</div>
+                <div className="admin-detail-value">
+                  {formatDate((selectedRecord.createdAt as string) || '')}
+                </div>
+              </div>
+
+              <div className="admin-detail-row">
+                <div className="admin-detail-label">Name</div>
+                <div className="admin-detail-value">{(selectedRecord.name as string) || '-'}</div>
+              </div>
+
+              <div className="admin-detail-row">
+                <div className="admin-detail-label">Email</div>
+                <div className="admin-detail-value">
+                  <a href={`mailto:${selectedRecord.email}`} style={{ color: '#38bdf8' }}>
+                    {(selectedRecord.email as string) || '-'}
+                  </a>
+                </div>
+              </div>
+
+              {Boolean(selectedRecord.city) && (
+                <div className="admin-detail-row">
+                  <div className="admin-detail-label">City</div>
+                  <div className="admin-detail-value">{(selectedRecord.city as string) || '-'}</div>
+                </div>
+              )}
+
+              {Boolean(selectedRecord.business) && (
+                <div className="admin-detail-row">
+                  <div className="admin-detail-label">Business / Venue</div>
+                  <div className="admin-detail-value">{(selectedRecord.business as string) || '-'}</div>
+                </div>
+              )}
+
+              {Boolean(selectedRecord.message) && (
+                <div className="admin-detail-row">
+                  <div className="admin-detail-label">Message / Order Requirements</div>
+                  <div
+                    className="admin-detail-value"
+                    style={{
+                      background: 'rgba(3, 20, 27, 0.6)',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: '1.6',
+                    }}
+                  >
+                    {(selectedRecord.message as string) || '-'}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: '24px', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  className="admin-btn"
+                  style={{ width: 'auto', padding: '0 24px', height: '40px' }}
+                  onClick={() => setSelectedRecord(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

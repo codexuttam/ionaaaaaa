@@ -201,3 +201,55 @@ export async function saveContactSubmission(
 
   return { general, specific }
 }
+
+/* -------------------------------------------------------------
+ * Admin Data Fetcher & Delete
+ * ------------------------------------------------------------*/
+export async function getAdminDashboardData(mongoUri?: string) {
+  await connectDB(mongoUri)
+  const [waitlists, bulkOrders, contacts, allSubmissions] = await Promise.all([
+    WaitlistSubmission.find().sort({ createdAt: -1 }).lean(),
+    BulkOrderSubmission.find().sort({ createdAt: -1 }).lean(),
+    ContactMessageSubmission.find().sort({ createdAt: -1 }).lean(),
+    ContactSubmission.find().sort({ createdAt: -1 }).lean(),
+  ])
+
+  return {
+    stats: {
+      totalWaitlist: waitlists.length,
+      totalBulkOrders: bulkOrders.length,
+      totalContacts: contacts.length,
+      totalAll: allSubmissions.length,
+    },
+    waitlists,
+    bulkOrders,
+    contacts,
+    allSubmissions,
+  }
+}
+
+export async function deleteAdminRecord(
+  collection: string,
+  id: string,
+  mongoUri?: string
+): Promise<boolean> {
+  await connectDB(mongoUri)
+  if (collection === 'waitlists') {
+    const res = await WaitlistSubmission.findByIdAndDelete(id)
+    return Boolean(res)
+  }
+  if (collection === 'bulk_orders') {
+    const res = await BulkOrderSubmission.findByIdAndDelete(id)
+    return Boolean(res)
+  }
+  if (collection === 'contacts') {
+    const res = await ContactMessageSubmission.findByIdAndDelete(id)
+    return Boolean(res)
+  }
+  if (collection === 'all_submissions') {
+    const res = await ContactSubmission.findByIdAndDelete(id)
+    return Boolean(res)
+  }
+  return false
+}
+

@@ -3,6 +3,9 @@
   "framework": "vite",
   "cleanUrls": false,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/sidadmin", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

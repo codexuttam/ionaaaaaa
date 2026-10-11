@@ -4,6 +4,50 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { MAX_BODY, parseContact } from './server/contact.ts'
 import { saveContactSubmission } from './server/db.ts'
+import { handleAdmin } from './server/admin.ts'
+
+// Dev and preview handler for /api/admin
+function adminEndpoint(mongoUri?: string, adminPassword?: string): Plugin {
+  const handler: Connect.NextHandleFunction = (req, res, next) => {
+    if (!req.url?.startsWith('/api/admin')) return next()
+    let bodyText = ''
+    req.on('data', (chunk: Buffer) => {
+      bodyText += chunk.toString('utf8')
+    })
+    req.on('end', async () => {
+      try {
+        const fullUrl = `http://${req.headers.host || '127.0.0.1:5173'}${req.url}`
+        const webReq = new Request(fullUrl, {
+          method: req.method,
+          headers: req.headers as Record<string, string>,
+          body: req.method !== 'GET' && req.method !== 'HEAD' && bodyText ? bodyText : undefined,
+        })
+        const response = await handleAdmin(webReq, {
+          MONGODB_URI: mongoUri,
+          ADMIN_PASSWORD: adminPassword,
+        })
+        res.statusCode = response.status
+        response.headers.forEach((val, key) => res.setHeader(key, val))
+        const resText = await response.text()
+        res.end(resText)
+      } catch (err) {
+        console.error('[admin] Endpoint error:', err)
+        res.statusCode = 500
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ ok: false, error: 'Internal admin handler error' }))
+      }
+    })
+  }
+  return {
+    name: 'iona-admin-endpoint',
+    configureServer(server) {
+      server.middlewares.use(handler)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(handler)
+    },
+  }
+}
 
 // Dev and preview handler for POST /api/contact. It validates submissions and saves them to MongoDB if configured.
 function contactEndpoint(mongoUri?: string): Plugin {
@@ -160,8 +204,15 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const allEnv = loadEnv(mode, process.cwd(), '')
   const mongoUri = allEnv.MONGODB_URI || process.env.MONGODB_URI
+  const adminPassword = allEnv.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
   return {
-    plugins: [react(), contactEndpoint(mongoUri), siteMeta(env.VITE_SITE_URL ?? ''), previewHeaders()],
+    plugins: [
+      react(),
+      adminEndpoint(mongoUri, adminPassword),
+      contactEndpoint(mongoUri),
+      siteMeta(env.VITE_SITE_URL ?? ''),
+      previewHeaders(),
+    ],
     server: { port: 5173, strictPort: true, host: '127.0.0.1' },
     preview: { port: 4173, strictPort: true, host: '127.0.0.1' },
     build: {
