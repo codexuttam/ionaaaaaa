@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { duck } from '../experience/audio'
+import { transport } from '../experience/scroller'
 import { CONTACT_HASH, CONTACT_OPEN_EVENT, openContact, takeContactOpener, takeContactOptions, type ContactKind } from './contact'
 import { CONTACT } from './copy'
 
@@ -56,12 +57,14 @@ export function ContactDialog() {
       setInvalid({})
       dialog.showModal()
       duck(true)
+      transport.lenis?.stop()
       document.documentElement.dataset.dialog = 'open'
       titleRef.current?.focus()
       if (location.hash !== CONTACT_HASH[next]) history.replaceState(history.state, '', CONTACT_HASH[next])
     }
     const onClose = () => {
       duck(false)
+      transport.lenis?.start()
       delete document.documentElement.dataset.dialog
       if (HASHES.includes(location.hash)) history.replaceState(history.state, '', location.pathname + location.search)
       const opener = takeContactOpener()
@@ -160,7 +163,7 @@ export function ContactDialog() {
   const control = (name: Field) =>
     field(name, (a11y) => {
       const common = { name, maxLength: LIMITS[name], placeholder: SPEC[name].placeholder, onInput: clear(name), ...a11y }
-      if (name === 'message') return <textarea rows={hospitality ? 4 : 5} autoComplete="off" {...common} />
+      if (name === 'message') return <textarea rows={hospitality ? 2 : 3} autoComplete="off" {...common} />
       if (name === 'email') return <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} {...common} />
       if (name === 'phone')
         return (
