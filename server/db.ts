@@ -229,27 +229,18 @@ export async function getAdminDashboardData(mongoUri?: string) {
 }
 
 export async function deleteAdminRecord(
-  collection: string,
+  _collection: string,
   id: string,
   mongoUri?: string
 ): Promise<boolean> {
   await connectDB(mongoUri)
-  if (collection === 'waitlists') {
-    const res = await WaitlistSubmission.findByIdAndDelete(id)
-    return Boolean(res)
-  }
-  if (collection === 'bulk_orders') {
-    const res = await BulkOrderSubmission.findByIdAndDelete(id)
-    return Boolean(res)
-  }
-  if (collection === 'contacts') {
-    const res = await ContactMessageSubmission.findByIdAndDelete(id)
-    return Boolean(res)
-  }
-  if (collection === 'all_submissions') {
-    const res = await ContactSubmission.findByIdAndDelete(id)
-    return Boolean(res)
-  }
-  return false
+  const results = await Promise.allSettled([
+    WaitlistSubmission.findByIdAndDelete(id),
+    BulkOrderSubmission.findByIdAndDelete(id),
+    ContactMessageSubmission.findByIdAndDelete(id),
+    ContactSubmission.findByIdAndDelete(id),
+  ])
+  return results.some((r) => r.status === 'fulfilled' && Boolean(r.value))
 }
+
 
