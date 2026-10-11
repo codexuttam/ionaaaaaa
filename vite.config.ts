@@ -3,10 +3,10 @@ import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { MAX_BODY, parseContact } from './server/contact.ts'
+import { saveContactSubmission } from './server/db.ts'
 
-// Dev and preview stand-in for POST /api/contact. It validates with the production rules and logs;
-// it does not send mail. Production runs server/contact.ts through one of the serverless adapters.
-function contactEndpoint(): Plugin {
+// Dev and preview handler for POST /api/contact. It validates submissions and saves them to MongoDB if configured.
+function contactEndpoint(mongoUri?: string): Plugin {
   const handler: Connect.NextHandleFunction = (req, res, next) => {
     if (req.url !== '/api/contact') return next()
     const answer = (status: number, ok: boolean) => {
@@ -21,7 +21,7 @@ function contactEndpoint(): Plugin {
       body += chunk.toString('utf8')
       if (body.length > MAX_BODY) req.destroy()
     })
-    req.on('end', () => {
+    req.on('end', async () => {
       let parsed: ReturnType<typeof parseContact>
       try {
         parsed = parseContact(JSON.parse(body))
@@ -29,7 +29,19 @@ function contactEndpoint(): Plugin {
         parsed = { ok: false }
       }
       if (!parsed.ok) return answer(400, false)
-      if (!parsed.spam) console.log('[contact] stand-in, not sent:', JSON.stringify(parsed.message))
+      if (parsed.spam) return answer(200, true)
+
+      if (mongoUri) {
+        try {
+          await saveContactSubmission(parsed.message, mongoUri)
+          console.log('[contact] saved to MongoDB Atlas:', parsed.message.email, `(${parsed.message.kind})`)
+        } catch (err) {
+          console.error('[contact] MongoDB error:', err)
+          return answer(500, false)
+        }
+      } else {
+        console.log('[contact] stand-in (MONGODB_URI not set):', JSON.stringify(parsed.message))
+      }
       answer(200, true)
     })
   }
@@ -146,8 +158,10 @@ function previewHeaders(): Plugin {
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const allEnv = loadEnv(mode, process.cwd(), '')
+  const mongoUri = allEnv.MONGODB_URI || process.env.MONGODB_URI
   return {
-    plugins: [react(), contactEndpoint(), siteMeta(env.VITE_SITE_URL ?? ''), previewHeaders()],
+    plugins: [react(), contactEndpoint(mongoUri), siteMeta(env.VITE_SITE_URL ?? ''), previewHeaders()],
     server: { port: 5173, strictPort: true, host: '127.0.0.1' },
     preview: { port: 4173, strictPort: true, host: '127.0.0.1' },
     build: {

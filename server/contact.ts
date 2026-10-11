@@ -10,6 +10,8 @@
 // With neither configured the handler answers 503 and the dialog shows its error line.
 // It never reports success for a message that was not delivered.
 
+import { saveContactSubmission } from './db.ts'
+
 /** Which form sent it: a message, a launch-list signup, or a hospitality enquiry (src/dom/ContactDialog.tsx). */
 export type ContactKind = 'contact' | 'launch' | 'hospitality'
 
@@ -21,6 +23,7 @@ export type ContactEnv = {
   CONTACT_TO?: string
   CONTACT_FROM?: string
   CONTACT_WEBHOOK_URL?: string
+  MONGODB_URI?: string
 }
 
 /** Largest request body accepted, in bytes. */
@@ -144,13 +147,24 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   // a bot that filled the hidden field gets the success answer and nothing is sent
   if (parsed.spam) return json(200, { ok: true })
 
+  const mongoUri = env.MONGODB_URI || process.env.MONGODB_URI
+  const viaMongo = Boolean(mongoUri)
   const viaMail = Boolean(env.RESEND_API_KEY && env.CONTACT_TO)
   const viaWebhook = Boolean(env.CONTACT_WEBHOOK_URL)
-  if (!viaMail && !viaWebhook) return json(503, { ok: false, error: 'contact delivery is not configured' })
+  if (!viaMongo && !viaMail && !viaWebhook) return json(503, { ok: false, error: 'contact delivery is not configured' })
+
   try {
-    const delivered = viaMail ? await sendResend(env, parsed.message) : await sendWebhook(env, parsed.message)
-    return delivered ? json(200, { ok: true }) : json(502, { ok: false })
-  } catch {
-    return json(502, { ok: false })
+    if (viaMongo) {
+      await saveContactSubmission(parsed.message, mongoUri)
+    }
+    if (viaMail) {
+      await sendResend(env, parsed.message)
+    } else if (viaWebhook) {
+      await sendWebhook(env, parsed.message)
+    }
+    return json(200, { ok: true })
+  } catch (err) {
+    console.error('[contact] failed to process submission:', err)
+    return json(500, { ok: false })
   }
 }
