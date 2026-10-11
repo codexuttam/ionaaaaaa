@@ -107,7 +107,7 @@ export function AdminDashboard() {
 
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>('waitlist')
+  const [activeTab, setActiveTab] = useState<TabType>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -321,9 +321,28 @@ export function AdminDashboard() {
           </div>
         </header>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - Clickable to switch tabs */}
         <section className="admin-stats-grid">
-          <div className="admin-stat-card">
+          <div
+            className={`admin-stat-card ${activeTab === 'all' ? 'active-card' : ''}`}
+            onClick={() => setActiveTab('all')}
+            style={{ cursor: 'pointer' }}
+            title="Click to view all submissions"
+          >
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">Total Submissions</span>
+              <span className="admin-stat-icon">📊</span>
+            </div>
+            <div className="admin-stat-value">{stats.totalAll}</div>
+            <p className="admin-stat-desc">All lifetime records across forms</p>
+          </div>
+
+          <div
+            className={`admin-stat-card ${activeTab === 'waitlist' ? 'active-card' : ''}`}
+            onClick={() => setActiveTab('waitlist')}
+            style={{ cursor: 'pointer' }}
+            title="Click to view launch list signups"
+          >
             <div className="admin-stat-header">
               <span className="admin-stat-label">Launch List</span>
               <span className="admin-stat-icon">🚀</span>
@@ -332,7 +351,12 @@ export function AdminDashboard() {
             <p className="admin-stat-desc">"Join the Launch List" signups</p>
           </div>
 
-          <div className="admin-stat-card">
+          <div
+            className={`admin-stat-card ${activeTab === 'bulk' ? 'active-card' : ''}`}
+            onClick={() => setActiveTab('bulk')}
+            style={{ cursor: 'pointer' }}
+            title="Click to view hospitality enquiries"
+          >
             <div className="admin-stat-header">
               <span className="admin-stat-label">Hospitality Enquiries</span>
               <span className="admin-stat-icon">🏢</span>
@@ -341,7 +365,12 @@ export function AdminDashboard() {
             <p className="admin-stat-desc">Hotels, restaurants & venue requirements</p>
           </div>
 
-          <div className="admin-stat-card">
+          <div
+            className={`admin-stat-card ${activeTab === 'contact' ? 'active-card' : ''}`}
+            onClick={() => setActiveTab('contact')}
+            style={{ cursor: 'pointer' }}
+            title="Click to view contact messages"
+          >
             <div className="admin-stat-header">
               <span className="admin-stat-label">Contact Messages</span>
               <span className="admin-stat-icon">✉️</span>
@@ -349,20 +378,19 @@ export function AdminDashboard() {
             <div className="admin-stat-value">{stats.totalContacts}</div>
             <p className="admin-stat-desc">Direct visitor contact messages</p>
           </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-header">
-              <span className="admin-stat-label">Total Submissions</span>
-              <span className="admin-stat-icon">📊</span>
-            </div>
-            <div className="admin-stat-value">{stats.totalAll}</div>
-            <p className="admin-stat-desc">All lifetime records across forms</p>
-          </div>
         </section>
 
         {/* Controls Card */}
         <section className="admin-controls-card">
           <div className="admin-tabs">
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              <span>All Submissions</span>
+              <span className="admin-tab-count">{stats.totalAll}</span>
+            </button>
             <button
               type="button"
               className={`admin-tab ${activeTab === 'waitlist' ? 'active' : ''}`}
@@ -386,14 +414,6 @@ export function AdminDashboard() {
             >
               <span>Contact</span>
               <span className="admin-tab-count">{stats.totalContacts}</span>
-            </button>
-            <button
-              type="button"
-              className={`admin-tab ${activeTab === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveTab('all')}
-            >
-              <span>All Submissions</span>
-              <span className="admin-tab-count">{stats.totalAll}</span>
             </button>
           </div>
 
