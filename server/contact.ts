@@ -55,7 +55,13 @@ const clean = (v: unknown, max: number): string => (typeof v === 'string' ? v.re
 export function parseContact(body: unknown): { ok: true; message: ContactMessage; spam: boolean } | { ok: false } {
   if (!body || typeof body !== 'object') return { ok: false }
   const data = body as Record<string, unknown>
-  const kind: ContactKind = data.kind === 'launch' || data.kind === 'hospitality' ? data.kind : 'contact'
+  const rawKind = typeof data.kind === 'string' ? data.kind.trim().toLowerCase() : ''
+  const kind: ContactKind =
+    rawKind === 'launch' || rawKind === 'waitlist' || rawKind === 'waitlisted'
+      ? 'launch'
+      : rawKind === 'hospitality' || rawKind === 'bulk' || rawKind === 'bulk_order'
+        ? 'hospitality'
+        : 'contact'
   const m: ContactMessage = {
     kind,
     name: clean(data.name, MAX_NAME),
