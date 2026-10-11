@@ -199,17 +199,15 @@ export function AdminDashboard() {
     }
   }, [token])
 
-  const handleDelete = async (collection: string, id: string) => {
-    // Two-step inline confirmation so browser shields/pop-up blockers cannot block deletion
-    if (confirmDeleteId !== id) {
-      setConfirmDeleteId(id)
-      setTimeout(() => {
-        setConfirmDeleteId((cur) => (cur === id ? null : cur))
-      }, 4000)
-      return
+  const closeModal = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
     }
+    setSelectedRecord(null)
+  }
 
-    setConfirmDeleteId(null)
+  const handleDelete = async (collection: string, id: string) => {
     setDeletingId(id)
     try {
       const res = await fetch('/api/admin/delete', {
@@ -221,9 +219,7 @@ export function AdminDashboard() {
         body: JSON.stringify({ collection, id }),
       })
       if (res.ok) {
-        if (selectedRecord && (selectedRecord._id as string) === id) {
-          setSelectedRecord(null)
-        }
+        setSelectedRecord(null)
         await fetchData()
       }
     } catch (err) {
@@ -507,7 +503,11 @@ export function AdminDashboard() {
                     return (
                       <tr
                         key={id}
-                        onClick={() => setSelectedRecord(row)}
+                        onClick={() => {
+                          if (!selectedRecord) {
+                            setSelectedRecord(row)
+                          }
+                        }}
                         style={{ cursor: 'pointer' }}
                         title="Click to view details"
                       >
@@ -651,11 +651,11 @@ export function AdminDashboard() {
               return (
                 <div
                   className="admin-modal-backdrop"
+                  onPointerDown={(e) => {
+                    if (e.target === e.currentTarget) closeModal(e)
+                  }}
                   onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      setSelectedRecord(null)
-                      setConfirmDeleteId(null)
-                    }
+                    if (e.target === e.currentTarget) closeModal(e)
                   }}
                   role="dialog"
                   aria-modal="true"
@@ -675,11 +675,8 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         className="admin-modal-close"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedRecord(null)
-                          setConfirmDeleteId(null)
-                        }}
+                        onPointerDown={closeModal}
+                        onClick={closeModal}
                         title="Close"
                       >
                         ✕
@@ -780,7 +777,7 @@ export function AdminDashboard() {
                           className="admin-detail-value"
                           style={{ color: '#22c55e', fontSize: '12px' }}
                         >
-                          ● Stored Live in MongoDB Atlas
+                          ● Stored Live in Database
                         </div>
                       </div>
                     </div>
@@ -816,7 +813,7 @@ export function AdminDashboard() {
                     <div className="admin-modal-footer">
                       <button
                         type="button"
-                        className={`admin-btn-danger ${confirmDeleteId === id ? 'admin-btn-danger--confirm' : ''}`}
+                        className="admin-btn-danger"
                         disabled={deletingId === id}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -825,21 +822,16 @@ export function AdminDashboard() {
                       >
                         <span>
                           {deletingId === id
-                            ? '⏳ Deleting from MongoDB...'
-                            : confirmDeleteId === id
-                              ? '⚠️ Confirm Delete? Click to Erase'
-                              : '🗑 Delete from MongoDB'}
+                            ? '⏳ Deleting from Database...'
+                            : '🗑 Delete from Database'}
                         </span>
                       </button>
 
                       <button
                         type="button"
                         className="admin-btn-close"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedRecord(null)
-                          setConfirmDeleteId(null)
-                        }}
+                        onPointerDown={closeModal}
+                        onClick={closeModal}
                       >
                         Close
                       </button>
