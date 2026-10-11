@@ -318,29 +318,29 @@ export function AdminDashboard() {
         <section className="admin-stats-grid">
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">Launch Waitlist</span>
+              <span className="admin-stat-label">Launch List</span>
               <span className="admin-stat-icon">🚀</span>
             </div>
             <div className="admin-stat-value">{stats.totalWaitlist}</div>
-            <p className="admin-stat-desc">Users signed up for product launch</p>
+            <p className="admin-stat-desc">"Join the Launch List" signups</p>
           </div>
 
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">Bulk Orders</span>
+              <span className="admin-stat-label">Hospitality Enquiries</span>
               <span className="admin-stat-icon">🏢</span>
             </div>
             <div className="admin-stat-value">{stats.totalBulkOrders}</div>
-            <p className="admin-stat-desc">Hotels, restaurants & wholesale enquiries</p>
+            <p className="admin-stat-desc">Hotels, restaurants & venue requirements</p>
           </div>
 
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">General Contact</span>
+              <span className="admin-stat-label">Contact Messages</span>
               <span className="admin-stat-icon">✉️</span>
             </div>
             <div className="admin-stat-value">{stats.totalContacts}</div>
-            <p className="admin-stat-desc">Direct customer inquiries & messages</p>
+            <p className="admin-stat-desc">Direct visitor contact messages</p>
           </div>
 
           <div className="admin-stat-card">
@@ -361,7 +361,7 @@ export function AdminDashboard() {
               className={`admin-tab ${activeTab === 'waitlist' ? 'active' : ''}`}
               onClick={() => setActiveTab('waitlist')}
             >
-              <span>Waitlist</span>
+              <span>Launch List</span>
               <span className="admin-tab-count">{stats.totalWaitlist}</span>
             </button>
             <button
@@ -369,7 +369,7 @@ export function AdminDashboard() {
               className={`admin-tab ${activeTab === 'bulk' ? 'active' : ''}`}
               onClick={() => setActiveTab('bulk')}
             >
-              <span>Bulk Orders</span>
+              <span>Hospitality Enquiries</span>
               <span className="admin-tab-count">{stats.totalBulkOrders}</span>
             </button>
             <button
@@ -377,7 +377,7 @@ export function AdminDashboard() {
               className={`admin-tab ${activeTab === 'contact' ? 'active' : ''}`}
               onClick={() => setActiveTab('contact')}
             >
-              <span>Contact Messages</span>
+              <span>Contact</span>
               <span className="admin-tab-count">{stats.totalContacts}</span>
             </button>
             <button
@@ -394,7 +394,7 @@ export function AdminDashboard() {
             <input
               type="text"
               className="admin-search-box"
-              placeholder="Search by name, email, city..."
+              placeholder="Search by name, email, city, business..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -413,12 +413,12 @@ export function AdminDashboard() {
                   <th>Date</th>
                   <th>Name</th>
                   <th>Email</th>
-                  {activeTab === 'bulk' && <th>Business / Venue</th>}
+                  {activeTab === 'bulk' && <th>Business Name</th>}
                   {(activeTab === 'waitlist' || activeTab === 'bulk') && <th>City</th>}
-                  {activeTab === 'all' && <th>Category</th>}
-                  {(activeTab === 'bulk' || activeTab === 'contact' || activeTab === 'all') && (
-                    <th>Message / Requirements</th>
-                  )}
+                  {activeTab === 'all' && <th>Form</th>}
+                  {activeTab === 'bulk' && <th>Requirements (Sizes, volumes, timing)</th>}
+                  {activeTab === 'contact' && <th>Message</th>}
+                  {activeTab === 'all' && <th>Message / Requirements</th>}
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
