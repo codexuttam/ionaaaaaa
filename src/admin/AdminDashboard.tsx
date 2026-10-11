@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
 import './admin.css'
 
 interface WaitlistRecord {
@@ -321,7 +320,7 @@ export function AdminDashboard() {
           </div>
 
           <div className="admin-nav-actions">
-            <a href="/" className="admin-secondary-btn">
+            <a href="/" target="_blank" rel="noopener noreferrer" className="admin-secondary-btn" title="Open live website in new tab">
               <span>&larr; View Website</span>
             </a>
             <button type="button" className="admin-secondary-btn" onClick={fetchData} title="Refresh records">
@@ -486,12 +485,18 @@ export function AdminDashboard() {
                             : 'all_submissions'
 
                     return (
-                      <tr key={id}>
+                      <tr
+                        key={id}
+                        onClick={() => setSelectedRecord(row)}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to view details"
+                      >
                         <td style={{ whiteSpace: 'nowrap' }}>{formatDate((row.createdAt as string) || '')}</td>
                         <td style={{ fontWeight: 600, color: '#f5f7f8' }}>{(row.name as string) || '-'}</td>
                         <td>
                           <a
                             href={`mailto:${row.email}`}
+                            onClick={(e) => e.stopPropagation()}
                             style={{ color: '#38bdf8', textDecoration: 'none' }}
                             title="Click to send email"
                           >
@@ -503,6 +508,7 @@ export function AdminDashboard() {
                           {row.phone ? (
                             <a
                               href={`tel:${row.phone}`}
+                              onClick={(e) => e.stopPropagation()}
                               style={{ color: '#38bdf8', textDecoration: 'none' }}
                               title="Click to call"
                             >
@@ -544,8 +550,6 @@ export function AdminDashboard() {
                             <div
                               className="admin-truncate"
                               title={(row.message as string) || ''}
-                              onClick={() => setSelectedRecord(row)}
-                              style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}
                             >
                               {(row.message as string) || '-'}
                             </div>
@@ -570,7 +574,10 @@ export function AdminDashboard() {
                           <button
                             type="button"
                             className="admin-view-action-btn"
-                            onClick={() => setSelectedRecord(row)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedRecord(row)
+                            }}
                             title="View full submission details"
                           >
                             👁 View
@@ -579,7 +586,10 @@ export function AdminDashboard() {
                             type="button"
                             className="admin-delete-btn"
                             disabled={deletingId === id}
-                            onClick={() => handleDelete(targetCollection, id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(targetCollection, id)
+                            }}
                             title="Delete record"
                             style={{ marginLeft: '6px' }}
                           >
@@ -595,10 +605,9 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Enhanced Details Pop-up Card rendered into document.body */}
+        {/* Enhanced Details Pop-up Card */}
         {selectedRecord &&
-          createPortal(
-            (() => {
+          (() => {
               const id = selectedRecord._id as string
               const isLaunch = selectedRecord.kind === 'launch' || activeTab === 'waitlist'
               const isHospitality =
@@ -796,9 +805,7 @@ export function AdminDashboard() {
                   </div>
                 </div>
               )
-            })(),
-            document.body
-          )}
+            })()}
       </div>
     </div>
   )
