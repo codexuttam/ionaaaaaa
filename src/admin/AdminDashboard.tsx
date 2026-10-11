@@ -115,8 +115,21 @@ export function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [copiedEmail, setCopiedEmail] = useState(false)
   const [copiedPhone, setCopiedPhone] = useState(false)
+
+  // Allow closing details modal via Escape key
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedRecord(null)
+        setConfirmDeleteId(null)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const copyEmail = (email: string) => {
     navigator.clipboard.writeText(email)
@@ -187,7 +200,16 @@ export function AdminDashboard() {
   }, [token])
 
   const handleDelete = async (collection: string, id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this record?')) return
+    // Two-step inline confirmation so browser shields/pop-up blockers cannot block deletion
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id)
+      setTimeout(() => {
+        setConfirmDeleteId((cur) => (cur === id ? null : cur))
+      }, 4000)
+      return
+    }
+
+    setConfirmDeleteId(null)
     setDeletingId(id)
     try {
       const res = await fetch('/api/admin/delete', {
@@ -203,11 +225,9 @@ export function AdminDashboard() {
           setSelectedRecord(null)
         }
         await fetchData()
-      } else {
-        alert('Could not delete record.')
       }
-    } catch {
-      alert('Network error while deleting.')
+    } catch (err) {
+      console.error('[admin] Delete error:', err)
     } finally {
       setDeletingId(null)
     }
@@ -584,16 +604,16 @@ export function AdminDashboard() {
                           </button>
                           <button
                             type="button"
-                            className="admin-delete-btn"
+                            className={`admin-delete-btn ${confirmDeleteId === id ? 'admin-delete-btn--confirm' : ''}`}
                             disabled={deletingId === id}
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDelete(targetCollection, id)
                             }}
-                            title="Delete record"
+                            title={confirmDeleteId === id ? 'Click again to confirm delete' : 'Delete record'}
                             style={{ marginLeft: '6px' }}
                           >
-                            {deletingId === id ? '...' : '✕'}
+                            {deletingId === id ? '...' : confirmDeleteId === id ? '⚠️ Sure?' : '✕'}
                           </button>
                         </td>
                       </tr>
@@ -631,7 +651,12 @@ export function AdminDashboard() {
               return (
                 <div
                   className="admin-modal-backdrop"
-                  onClick={() => setSelectedRecord(null)}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setSelectedRecord(null)
+                      setConfirmDeleteId(null)
+                    }
+                  }}
                   role="dialog"
                   aria-modal="true"
                 >
@@ -650,7 +675,11 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         className="admin-modal-close"
-                        onClick={() => setSelectedRecord(null)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedRecord(null)
+                          setConfirmDeleteId(null)
+                        }}
                         title="Close"
                       >
                         ✕
@@ -787,17 +816,30 @@ export function AdminDashboard() {
                     <div className="admin-modal-footer">
                       <button
                         type="button"
-                        className="admin-btn-danger"
+                        className={`admin-btn-danger ${confirmDeleteId === id ? 'admin-btn-danger--confirm' : ''}`}
                         disabled={deletingId === id}
-                        onClick={() => handleDelete(targetCollection, id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(targetCollection, id)
+                        }}
                       >
-                        <span>🗑 Delete from MongoDB</span>
+                        <span>
+                          {deletingId === id
+                            ? '⏳ Deleting from MongoDB...'
+                            : confirmDeleteId === id
+                              ? '⚠️ Confirm Delete? Click to Erase'
+                              : '🗑 Delete from MongoDB'}
+                        </span>
                       </button>
 
                       <button
                         type="button"
                         className="admin-btn-close"
-                        onClick={() => setSelectedRecord(null)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedRecord(null)
+                          setConfirmDeleteId(null)
+                        }}
                       >
                         Close
                       </button>
