@@ -18,10 +18,12 @@ type Status = 'idle' | 'sending' | 'sent' | 'error'
 type Field = 'name' | 'email' | 'phone' | 'city' | 'business' | 'message'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/** An Indian mobile number after the fixed +91 prefix: 10 digits, starting 6-9. */
+const PHONE = /^[6-9]\d{9}$/
 /** Milliseconds before a hanging request is given up and the error line shows. */
 const SEND_TIMEOUT = 15_000
 /** The server's limits (server/contact.ts): the form never allows what the server would refuse. */
-const LIMITS: Record<Field, number> = { name: 200, email: 254, phone: 40, city: 120, business: 200, message: 5000 }
+const LIMITS: Record<Field, number> = { name: 200, email: 254, phone: 10, city: 120, business: 200, message: 5000 }
 /** The fields of each form, in order; every one is required. */
 const FIELDS: Record<ContactKind, readonly Field[]> = {
   contact: ['name', 'email', 'phone', 'message'],
@@ -91,7 +93,11 @@ export function ContactDialog() {
     const data = new FormData(form)
     const value = (f: Field) => String(data.get(f) ?? '').trim()
     const bad: Partial<Record<Field, true>> = {}
-    for (const f of FIELDS[kind]) if (f === 'email' ? !EMAIL.test(value(f)) : !value(f)) bad[f] = true
+    for (const f of FIELDS[kind]) {
+      const v = value(f)
+      const ok = f === 'email' ? EMAIL.test(v) : f === 'phone' ? PHONE.test(v) : Boolean(v)
+      if (!ok) bad[f] = true
+    }
     setInvalid(bad)
     if (Object.keys(bad).length) {
       // after React has rendered the hints, so the field's description is read with it
@@ -105,7 +111,11 @@ export function ContactDialog() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, ...Object.fromEntries(FIELDS[kind].map((f) => [f, value(f)])), company: String(data.get('company') ?? '') }),
+        body: JSON.stringify({
+          kind,
+          ...Object.fromEntries(FIELDS[kind].map((f) => [f, f === 'phone' ? `+91 ${value(f)}` : value(f)])),
+          company: String(data.get('company') ?? ''),
+        }),
         signal: controller.signal,
       })
       const json = (await res.json().catch(() => ({ ok: false }))) as { ok?: boolean }
@@ -152,7 +162,30 @@ export function ContactDialog() {
       const common = { name, maxLength: LIMITS[name], placeholder: SPEC[name].placeholder, onInput: clear(name), ...a11y }
       if (name === 'message') return <textarea rows={hospitality ? 4 : 5} autoComplete="off" {...common} />
       if (name === 'email') return <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} {...common} />
-      if (name === 'phone') return <input type="tel" inputMode="tel" autoComplete="tel" {...common} />
+      if (name === 'phone')
+        return (
+          <span className="contact__phone">
+            <span className="contact__phone-prefix" aria-hidden="true">
+              +91
+            </span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              pattern="[6-9][0-9]{9}"
+              aria-label={`${SPEC.phone.label} (+91)`}
+              {...common}
+              onInput={(e) => {
+                // digits only, at most 10: a pasted "+91 98765-43210" becomes "9876543210"
+                const el = e.currentTarget
+                let d = el.value.replace(/\D/g, '')
+                if (d.length > 10 && d.startsWith('91')) d = d.slice(2)
+                el.value = d.slice(0, 10)
+                clear('phone')()
+              }}
+            />
+          </span>
+        )
       const auto = { name: 'name', city: 'address-level2', business: 'organization' }[name]
       return <input type="text" autoComplete={auto} {...common} />
     })

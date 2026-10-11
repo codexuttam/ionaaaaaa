@@ -48,6 +48,18 @@ const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
 const clean = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(CONTROL, '').trim().slice(0, max) : '')
 
 /**
+ * An Indian mobile number as "+91 XXXXXXXXXX", or '' if it is not one. Accepts "+91 98765 43210",
+ * "919876543210", "09876543210" or "9876543210"; the 10 digits must start with 6-9.
+ */
+export function normalizePhone(v: unknown): string {
+  if (typeof v !== 'string') return ''
+  let d = v.replace(/\D/g, '')
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
+  else if (d.length === 11 && d.startsWith('0')) d = d.slice(1)
+  return /^[6-9]\d{9}$/.test(d) ? `+91 ${d}` : ''
+}
+
+/**
  * Validate a parsed JSON body (docs/04 "Contact": every field of the form at least one
  * character, email matches a simple pattern). A body without a known `kind` is a plain
  * message. `spam` is true when the honeypot field was filled: the caller answers as if it
@@ -67,12 +79,12 @@ export function parseContact(body: unknown): { ok: true; message: ContactMessage
     kind,
     name: clean(data.name, MAX_NAME),
     email: clean(data.email, MAX_EMAIL),
-    phone: clean(data.phone, MAX_PHONE),
+    phone: normalizePhone(clean(data.phone, MAX_PHONE)),
     city: kind === 'contact' ? '' : clean(data.city, MAX_CITY),
     business: kind === 'hospitality' ? clean(data.business, MAX_BUSINESS) : '',
     message: kind === 'launch' ? '' : clean(data.message, MAX_MESSAGE),
   }
-  if (!m.name || !EMAIL.test(m.email) || REQUIRED[kind].some((f) => !m[f])) return { ok: false }
+  if (!m.name || !EMAIL.test(m.email) || !m.phone || REQUIRED[kind].some((f) => !m[f])) return { ok: false }
   const spam = typeof data.company === 'string' && data.company.trim().length > 0
   return { ok: true, message: m, spam }
 }
