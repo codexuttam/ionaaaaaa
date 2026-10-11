@@ -152,7 +152,9 @@ export async function connectDB(uri?: string): Promise<typeof mongoose> {
     return mongoose
   }
 
-  const conn = await mongoose.connect(mongoUri)
+  const conn = await mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 5000,
+  })
   isConnected = conn.connection.readyState === 1
   return conn
 }
