@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { useEffect, useState, useMemo, useRef, type FormEvent } from 'react'
 import './admin.css'
 
 interface WaitlistRecord {
@@ -115,7 +115,6 @@ export function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [copiedEmail, setCopiedEmail] = useState(false)
   const [copiedPhone, setCopiedPhone] = useState(false)
 
@@ -124,7 +123,6 @@ export function AdminDashboard() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedRecord(null)
-        setConfirmDeleteId(null)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -199,15 +197,27 @@ export function AdminDashboard() {
     }
   }, [token])
 
+  const justClosedRef = useRef(false)
+
+  const openModal = (row: Record<string, unknown>) => {
+    if (justClosedRef.current) return
+    setSelectedRecord(row)
+  }
+
   const closeModal = (e?: React.SyntheticEvent) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
+    justClosedRef.current = true
     setSelectedRecord(null)
+    setTimeout(() => {
+      justClosedRef.current = false
+    }, 350)
   }
 
   const handleDelete = async (collection: string, id: string) => {
+    if (deletingId) return
     setDeletingId(id)
     try {
       const res = await fetch('/api/admin/delete', {
@@ -218,12 +228,16 @@ export function AdminDashboard() {
         },
         body: JSON.stringify({ collection, id }),
       })
-      if (res.ok) {
-        setSelectedRecord(null)
+      const result = await res.json().catch(() => null)
+      if (res.ok && result?.ok) {
+        closeModal()
         await fetchData()
+      } else {
+        alert(result?.error || 'Failed to delete record from database.')
       }
     } catch (err) {
       console.error('[admin] Delete error:', err)
+      alert('Network error while deleting record.')
     } finally {
       setDeletingId(null)
     }
@@ -503,10 +517,10 @@ export function AdminDashboard() {
                     return (
                       <tr
                         key={id}
-                        onClick={() => {
-                          if (!selectedRecord) {
-                            setSelectedRecord(row)
-                          }
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement
+                          if (target.closest('button, a, input')) return
+                          openModal(row)
                         }}
                         style={{ cursor: 'pointer' }}
                         title="Click to view details"
@@ -596,7 +610,7 @@ export function AdminDashboard() {
                             className="admin-view-action-btn"
                             onClick={(e) => {
                               e.stopPropagation()
-                              setSelectedRecord(row)
+                              openModal(row)
                             }}
                             title="View full submission details"
                           >
@@ -604,16 +618,16 @@ export function AdminDashboard() {
                           </button>
                           <button
                             type="button"
-                            className={`admin-delete-btn ${confirmDeleteId === id ? 'admin-delete-btn--confirm' : ''}`}
+                            className="admin-delete-btn"
                             disabled={deletingId === id}
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDelete(targetCollection, id)
                             }}
-                            title={confirmDeleteId === id ? 'Click again to confirm delete' : 'Delete record'}
+                            title="Delete record from database"
                             style={{ marginLeft: '6px' }}
                           >
-                            {deletingId === id ? '...' : confirmDeleteId === id ? '⚠️ Sure?' : '✕'}
+                            {deletingId === id ? '...' : '🗑'}
                           </button>
                         </td>
                       </tr>
@@ -651,9 +665,6 @@ export function AdminDashboard() {
               return (
                 <div
                   className="admin-modal-backdrop"
-                  onPointerDown={(e) => {
-                    if (e.target === e.currentTarget) closeModal(e)
-                  }}
                   onClick={(e) => {
                     if (e.target === e.currentTarget) closeModal(e)
                   }}
@@ -675,9 +686,8 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         className="admin-modal-close"
-                        onPointerDown={closeModal}
                         onClick={closeModal}
-                        title="Close"
+                        title="Close details dialog"
                       >
                         ✕
                       </button>
@@ -830,7 +840,6 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         className="admin-btn-close"
-                        onPointerDown={closeModal}
                         onClick={closeModal}
                       >
                         Close

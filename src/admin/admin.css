@@ -545,7 +545,8 @@
   color: #38bdf8;
   padding: 5px 12px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -569,7 +570,8 @@
   color: #f87171;
   padding: 5px 10px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   font-size: 12px;
   font-weight: 600;
   transition: all 0.2s;
@@ -667,7 +669,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
   transition: all 0.2s;
 }
 
@@ -810,7 +815,10 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -835,7 +843,10 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
   transition: all 0.2s;
 }
 
