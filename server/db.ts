@@ -1,5 +1,15 @@
-import mongoose, { type Model } from 'mongoose'
+import mongoose, { type Model, type Schema } from 'mongoose'
 import type { ContactKind, ContactMessage } from './contact.ts'
+
+/**
+ * Always register a model against the *current* schema. Reusing `mongoose.models[name]`
+ * kept a stale model alive in the long-running dev server, so schema edits (e.g. `phone`,
+ * the `all_submissions` collection) were silently ignored until a full restart.
+ */
+function freshModel<T>(name: string, schema: Schema<T>): Model<T> {
+  if (mongoose.models[name]) mongoose.deleteModel(name)
+  return mongoose.model<T>(name, schema)
+}
 
 /* -------------------------------------------------------------
  * 1. Waitlist Schema & Model (collection: 'waitlists')
@@ -28,8 +38,7 @@ const WaitlistSchema = new mongoose.Schema<IWaitlist>(
 )
 
 export const WaitlistSubmission: Model<IWaitlist> =
-  (mongoose.models.WaitlistSubmission as Model<IWaitlist> | undefined) ||
-  mongoose.model<IWaitlist>('WaitlistSubmission', WaitlistSchema)
+  freshModel<IWaitlist>('WaitlistSubmission', WaitlistSchema)
 
 /* -------------------------------------------------------------
  * 2. Bulk Order / Hospitality Schema & Model (collection: 'bulk_orders')
@@ -62,8 +71,7 @@ const BulkOrderSchema = new mongoose.Schema<IBulkOrder>(
 )
 
 export const BulkOrderSubmission: Model<IBulkOrder> =
-  (mongoose.models.BulkOrderSubmission as Model<IBulkOrder> | undefined) ||
-  mongoose.model<IBulkOrder>('BulkOrderSubmission', BulkOrderSchema)
+  freshModel<IBulkOrder>('BulkOrderSubmission', BulkOrderSchema)
 
 /* -------------------------------------------------------------
  * 3. General Contact Schema & Model (collection: 'contacts')
@@ -92,8 +100,7 @@ const ContactMessageSchema = new mongoose.Schema<IContactMessageDoc>(
 )
 
 export const ContactMessageSubmission: Model<IContactMessageDoc> =
-  (mongoose.models.ContactMessageSubmission as Model<IContactMessageDoc> | undefined) ||
-  mongoose.model<IContactMessageDoc>('ContactMessageSubmission', ContactMessageSchema)
+  freshModel<IContactMessageDoc>('ContactMessageSubmission', ContactMessageSchema)
 
 /* -------------------------------------------------------------
  * 4. Unified All Submissions (collection: 'all_submissions')
@@ -128,8 +135,7 @@ const ContactSubmissionSchema = new mongoose.Schema<IContactSubmission>(
 )
 
 export const ContactSubmission: Model<IContactSubmission> =
-  (mongoose.models.ContactSubmission as Model<IContactSubmission> | undefined) ||
-  mongoose.model<IContactSubmission>('ContactSubmission', ContactSubmissionSchema)
+  freshModel<IContactSubmission>('ContactSubmission', ContactSubmissionSchema)
 
 /* -------------------------------------------------------------
  * Connection Manager
@@ -246,13 +252,25 @@ export async function deleteAdminRecord(
   mongoUri?: string
 ): Promise<boolean> {
   await connectDB(mongoUri)
-  const results = await Promise.allSettled([
-    WaitlistSubmission.findByIdAndDelete(id),
-    BulkOrderSubmission.findByIdAndDelete(id),
-    ContactMessageSubmission.findByIdAndDelete(id),
-    ContactSubmission.findByIdAndDelete(id),
-  ])
-  return results.some((r) => r.status === 'fulfilled' && Boolean(r.value))
+  type Twin = { name: string; email: string; createdAt: Date }
+  const models = [WaitlistSubmission, BulkOrderSubmission, ContactMessageSubmission, ContactSubmission] as unknown as Model<Twin>[]
+
+  // 1. Delete the record itself, wherever it lives
+  const results = await Promise.allSettled(models.map((m) => m.findByIdAndDelete(id).lean()))
+  const deleted = results.find((r) => r.status === 'fulfilled' && r.value)
+  if (!deleted || deleted.status !== 'fulfilled' || !deleted.value) return false
+
+  // 2. Delete its twin (same submission saved in all_submissions + its section, with a different _id):
+  //    same email + name, created within a few seconds of each other
+  const doc = deleted.value as { name: string; email: string; createdAt: Date }
+  const at = new Date(doc.createdAt).getTime()
+  const twin = {
+    email: doc.email,
+    name: doc.name,
+    createdAt: { $gte: new Date(at - 10_000), $lte: new Date(at + 10_000) },
+  }
+  await Promise.allSettled(models.map((m) => m.deleteMany(twin)))
+  return true
 }
 
 
