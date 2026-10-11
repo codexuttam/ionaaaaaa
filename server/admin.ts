@@ -27,13 +27,13 @@ function verifyAuth(request: Request, env: AdminEnv): boolean {
   }
 
   // Also check URL search param if present (e.g. for direct downloads)
-  const url = new URL(request.url)
+  const url = new URL(request.url, 'https://iona.local')
   const queryToken = url.searchParams.get('token')
   return queryToken === expected
 }
 
 export async function handleAdmin(request: Request, env: AdminEnv): Promise<Response> {
-  const url = new URL(request.url)
+  const url = new URL(request.url, 'https://iona.local')
   const path = url.pathname.replace(/\/+$/, '')
   const mongoUri = env.MONGODB_URI || process.env.MONGODB_URI
 
