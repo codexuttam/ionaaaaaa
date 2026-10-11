@@ -16,7 +16,7 @@ import { saveContactSubmission } from './db.ts'
 export type ContactKind = 'contact' | 'launch' | 'hospitality'
 
 /** `message` is the visitor's message, or a hospitality enquiry's requirements; fields a form does not have are empty. */
-export type ContactMessage = { kind: ContactKind; name: string; email: string; city: string; business: string; message: string }
+export type ContactMessage = { kind: ContactKind; name: string; email: string; phone: string; city: string; business: string; message: string }
 
 export type ContactEnv = {
   RESEND_API_KEY?: string
@@ -30,6 +30,7 @@ export type ContactEnv = {
 export const MAX_BODY = 20_000
 const MAX_NAME = 200
 const MAX_EMAIL = 254
+const MAX_PHONE = 40
 const MAX_CITY = 120
 const MAX_BUSINESS = 200
 const MAX_MESSAGE = 5_000
@@ -66,6 +67,7 @@ export function parseContact(body: unknown): { ok: true; message: ContactMessage
     kind,
     name: clean(data.name, MAX_NAME),
     email: clean(data.email, MAX_EMAIL),
+    phone: clean(data.phone, MAX_PHONE),
     city: kind === 'contact' ? '' : clean(data.city, MAX_CITY),
     business: kind === 'hospitality' ? clean(data.business, MAX_BUSINESS) : '',
     message: kind === 'launch' ? '' : clean(data.message, MAX_MESSAGE),
@@ -86,6 +88,7 @@ function details(m: ContactMessage): [string, string][] {
   const rows: [string, string][] = [
     ['Name', m.name],
     ['Email', m.email],
+    ['Phone', m.phone],
     ['City', m.city],
     ['Business', m.business],
   ]

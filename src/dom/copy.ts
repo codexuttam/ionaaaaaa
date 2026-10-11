@@ -148,6 +148,7 @@ export const CONTACT = {
   name: 'Name',
   email: 'Email',
   message: 'Message',
+  phone: 'Phone',
   city: 'City',
   business: 'Business Name',
   requirements: 'Requirements',
@@ -157,6 +158,7 @@ export const CONTACT = {
   /** Placeholders show the expected pattern (web-design-guidelines). */
   namePlaceholder: 'Your name…',
   emailPlaceholder: 'name@example.com',
+  phonePlaceholder: '+1 (555) 000-0000',
   messagePlaceholder: 'Your message…',
   cityPlaceholder: 'Your city…',
   businessPlaceholder: 'Hotel, restaurant or venue…',
@@ -164,6 +166,7 @@ export const CONTACT = {
   /** Inline field errors: what is wrong and how to fix it. */
   nameError: 'Enter your name.',
   emailError: 'Enter an email address like name@example.com.',
+  phoneError: 'Enter your phone number.',
   messageError: 'Write a short message.',
   cityError: 'Enter your city.',
   businessError: 'Enter your business name.',

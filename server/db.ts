@@ -7,6 +7,7 @@ import type { ContactKind, ContactMessage } from './contact.ts'
 export interface IWaitlist {
   name: string
   email: string
+  phone?: string
   city: string
   source: string
   status: string
@@ -17,6 +18,7 @@ const WaitlistSchema = new mongoose.Schema<IWaitlist>(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
+    phone: { type: String, default: '', trim: true },
     city: { type: String, default: '', trim: true },
     source: { type: String, default: 'launch_list_waitlist' },
     status: { type: String, default: 'waitlisted' },
@@ -35,6 +37,7 @@ export const WaitlistSubmission: Model<IWaitlist> =
 export interface IBulkOrder {
   name: string
   email: string
+  phone?: string
   city: string
   business: string
   message: string
@@ -47,6 +50,7 @@ const BulkOrderSchema = new mongoose.Schema<IBulkOrder>(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
+    phone: { type: String, default: '', trim: true },
     city: { type: String, default: '', trim: true },
     business: { type: String, default: '', trim: true },
     message: { type: String, default: '', trim: true },
@@ -67,6 +71,7 @@ export const BulkOrderSubmission: Model<IBulkOrder> =
 export interface IContactMessageDoc {
   name: string
   email: string
+  phone?: string
   message: string
   source: string
   status: string
@@ -77,6 +82,7 @@ const ContactMessageSchema = new mongoose.Schema<IContactMessageDoc>(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
+    phone: { type: String, default: '', trim: true },
     message: { type: String, default: '', trim: true },
     source: { type: String, default: 'general_contact' },
     status: { type: String, default: 'new_message' },
@@ -96,6 +102,7 @@ export interface IContactSubmission {
   kind: ContactKind
   name: string
   email: string
+  phone?: string
   city?: string
   business?: string
   message?: string
@@ -111,6 +118,7 @@ const ContactSubmissionSchema = new mongoose.Schema<IContactSubmission>(
     },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
+    phone: { type: String, default: '', trim: true },
     city: { type: String, default: '', trim: true },
     business: { type: String, default: '', trim: true },
     message: { type: String, default: '', trim: true },
@@ -157,6 +165,7 @@ export async function saveContactSubmission(
     kind: message.kind,
     name: message.name,
     email: message.email,
+    phone: message.phone || '',
     city: message.city,
     business: message.business,
     message: message.message,
@@ -170,6 +179,7 @@ export async function saveContactSubmission(
     specific = await WaitlistSubmission.create({
       name: message.name,
       email: message.email,
+      phone: message.phone || '',
       city: message.city,
       source: 'launch_list_waitlist',
       status: 'waitlisted',
@@ -180,6 +190,7 @@ export async function saveContactSubmission(
     specific = await BulkOrderSubmission.create({
       name: message.name,
       email: message.email,
+      phone: message.phone || '',
       city: message.city,
       business: message.business,
       message: message.message,
@@ -192,6 +203,7 @@ export async function saveContactSubmission(
     specific = await ContactMessageSubmission.create({
       name: message.name,
       email: message.email,
+      phone: message.phone || '',
       message: message.message,
       source: 'general_contact',
       status: 'new_message',

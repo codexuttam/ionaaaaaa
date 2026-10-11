@@ -15,18 +15,18 @@ import { CONTACT } from './copy'
 // field is the honeypot: people never see it, bots fill it, and the server drops those.
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
-type Field = 'name' | 'email' | 'city' | 'business' | 'message'
+type Field = 'name' | 'email' | 'phone' | 'city' | 'business' | 'message'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 /** Milliseconds before a hanging request is given up and the error line shows. */
 const SEND_TIMEOUT = 15_000
 /** The server's limits (server/contact.ts): the form never allows what the server would refuse. */
-const LIMITS: Record<Field, number> = { name: 200, email: 254, city: 120, business: 200, message: 5000 }
+const LIMITS: Record<Field, number> = { name: 200, email: 254, phone: 40, city: 120, business: 200, message: 5000 }
 /** The fields of each form, in order; every one is required. */
 const FIELDS: Record<ContactKind, readonly Field[]> = {
-  contact: ['name', 'email', 'message'],
-  launch: ['name', 'email', 'city'],
-  hospitality: ['name', 'email', 'city', 'business', 'message'],
+  contact: ['name', 'email', 'phone', 'message'],
+  launch: ['name', 'email', 'phone', 'city'],
+  hospitality: ['name', 'email', 'phone', 'city', 'business', 'message'],
 }
 /** Title, line under it, button and thank-you of each form. */
 const FORM: Record<ContactKind, { title: string; intro?: string; send: string; success: string }> = {
@@ -126,6 +126,7 @@ export function ContactDialog() {
   const SPEC: Record<Field, { label: string; placeholder: string; error: string }> = {
     name: { label: CONTACT.name, placeholder: CONTACT.namePlaceholder, error: CONTACT.nameError },
     email: { label: CONTACT.email, placeholder: CONTACT.emailPlaceholder, error: CONTACT.emailError },
+    phone: { label: CONTACT.phone, placeholder: CONTACT.phonePlaceholder, error: CONTACT.phoneError },
     city: { label: CONTACT.city, placeholder: CONTACT.cityPlaceholder, error: CONTACT.cityError },
     business: { label: CONTACT.business, placeholder: CONTACT.businessPlaceholder, error: CONTACT.businessError },
     message: hospitality
@@ -151,6 +152,7 @@ export function ContactDialog() {
       const common = { name, maxLength: LIMITS[name], placeholder: SPEC[name].placeholder, onInput: clear(name), ...a11y }
       if (name === 'message') return <textarea rows={hospitality ? 4 : 5} autoComplete="off" {...common} />
       if (name === 'email') return <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} {...common} />
+      if (name === 'phone') return <input type="tel" inputMode="tel" autoComplete="tel" {...common} />
       const auto = { name: 'name', city: 'address-level2', business: 'organization' }[name]
       return <input type="text" autoComplete={auto} {...common} />
     })

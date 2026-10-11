@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import './admin.css'
 
 interface WaitlistRecord {
   _id: string
   name: string
   email: string
+  phone?: string
   city?: string
   status?: string
   source?: string
@@ -15,6 +17,7 @@ interface BulkRecord {
   _id: string
   name: string
   email: string
+  phone?: string
   city?: string
   business?: string
   message?: string
@@ -27,6 +30,7 @@ interface ContactRecord {
   _id: string
   name: string
   email: string
+  phone?: string
   message: string
   status?: string
   source?: string
@@ -38,6 +42,7 @@ interface AllRecord {
   kind: 'contact' | 'launch' | 'hospitality'
   name: string
   email: string
+  phone?: string
   city?: string
   business?: string
   message?: string
@@ -111,12 +116,19 @@ export function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<Record<string, unknown> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copiedEmail, setCopiedEmail] = useState(false)
+  const [copiedPhone, setCopiedPhone] = useState(false)
 
   const copyEmail = (email: string) => {
     navigator.clipboard.writeText(email)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedEmail(true)
+    setTimeout(() => setCopiedEmail(false), 2000)
+  }
+
+  const copyPhone = (phone: string) => {
+    navigator.clipboard.writeText(phone)
+    setCopiedPhone(true)
+    setTimeout(() => setCopiedPhone(false), 2000)
   }
 
   const handleLogin = async (e: FormEvent) => {
@@ -440,8 +452,9 @@ export function AdminDashboard() {
                   <th>Date</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Phone</th>
                   {activeTab === 'bulk' && <th>Business Name</th>}
-                  {(activeTab === 'waitlist' || activeTab === 'bulk') && <th>City</th>}
+                  {(activeTab === 'waitlist' || activeTab === 'bulk' || activeTab === 'all') && <th>City</th>}
                   {activeTab === 'all' && <th>Form</th>}
                   {activeTab === 'bulk' && <th>Requirements (Sizes, volumes, timing)</th>}
                   {activeTab === 'contact' && <th>Message</th>}
@@ -453,7 +466,7 @@ export function AdminDashboard() {
               <tbody>
                 {currentRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={8}>
+                    <td colSpan={10}>
                       <div className="admin-empty-state">
                         <div className="admin-empty-icon">💧</div>
                         <div>No submissions found in this section yet.</div>
@@ -486,9 +499,23 @@ export function AdminDashboard() {
                           </a>
                         </td>
 
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {row.phone ? (
+                            <a
+                              href={`tel:${row.phone}`}
+                              style={{ color: '#38bdf8', textDecoration: 'none' }}
+                              title="Click to call"
+                            >
+                              📞 {(row.phone as string)}
+                            </a>
+                          ) : (
+                            <span style={{ color: '#64748b' }}>-</span>
+                          )}
+                        </td>
+
                         {activeTab === 'bulk' && <td>{(row.business as string) || '-'}</td>}
 
-                        {(activeTab === 'waitlist' || activeTab === 'bulk') && (
+                        {(activeTab === 'waitlist' || activeTab === 'bulk' || activeTab === 'all') && (
                           <td>{(row.city as string) || '-'}</td>
                         )}
 
@@ -542,10 +569,9 @@ export function AdminDashboard() {
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button
                             type="button"
-                            className="admin-delete-btn"
+                            className="admin-view-action-btn"
                             onClick={() => setSelectedRecord(row)}
-                            title="View details"
-                            style={{ marginRight: '6px' }}
+                            title="View full submission details"
                           >
                             👁 View
                           </button>
@@ -555,6 +581,7 @@ export function AdminDashboard() {
                             disabled={deletingId === id}
                             onClick={() => handleDelete(targetCollection, id)}
                             title="Delete record"
+                            style={{ marginLeft: '6px' }}
                           >
                             {deletingId === id ? '...' : '✕'}
                           </button>
@@ -568,139 +595,210 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Enhanced Details Pop-up Card */}
-        {selectedRecord && (() => {
-          const id = selectedRecord._id as string
-          const isLaunch = selectedRecord.kind === 'launch' || activeTab === 'waitlist'
-          const isHospitality =
-            selectedRecord.kind === 'hospitality' || activeTab === 'bulk' || Boolean(selectedRecord.business)
-          const categoryLabel = isLaunch
-            ? 'Join the Launch List'
-            : isHospitality
-              ? 'Hospitality Enquiry'
-              : 'Contact Message'
-          const badgeClass = isLaunch ? 'waitlist' : isHospitality ? 'bulk' : 'contact'
-          const targetCollection = isLaunch
-            ? 'waitlists'
-            : isHospitality
-              ? 'bulk_orders'
-              : 'contacts'
-          const senderName = (selectedRecord.name as string) || 'Visitor'
-          const initial = senderName.charAt(0).toUpperCase() || 'I'
+        {/* Enhanced Details Pop-up Card rendered into document.body */}
+        {selectedRecord &&
+          createPortal(
+            (() => {
+              const id = selectedRecord._id as string
+              const isLaunch = selectedRecord.kind === 'launch' || activeTab === 'waitlist'
+              const isHospitality =
+                selectedRecord.kind === 'hospitality' || activeTab === 'bulk' || Boolean(selectedRecord.business)
+              const categoryLabel = isLaunch
+                ? 'Join the Launch List'
+                : isHospitality
+                  ? 'Hospitality Enquiry'
+                  : 'Contact Message'
+              const badgeClass = isLaunch ? 'waitlist' : isHospitality ? 'bulk' : 'contact'
+              const targetCollection = isLaunch
+                ? 'waitlists'
+                : isHospitality
+                  ? 'bulk_orders'
+                  : 'contacts'
+              const senderName = (selectedRecord.name as string) || 'Visitor'
+              const initial = senderName.charAt(0).toUpperCase() || 'I'
+              const userEmail = (selectedRecord.email as string) || ''
+              const userPhone = (selectedRecord.phone as string) || ''
 
-          return (
-            <div className="admin-modal-backdrop" onClick={() => setSelectedRecord(null)}>
-              <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-                {/* Modal Header */}
-                <div className="admin-modal-header">
-                  <div>
-                    <h3 className="admin-modal-title">Submission Details</h3>
-                    <div className="admin-modal-badge-row">
-                      <span className={`admin-badge ${badgeClass}`}>{categoryLabel}</span>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>
-                        Received {formatDate((selectedRecord.createdAt as string) || '')}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="admin-modal-close"
-                    onClick={() => setSelectedRecord(null)}
-                    title="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Sender Identity Card */}
-                <div className="admin-sender-box">
-                  <div className="admin-avatar">{initial}</div>
-                  <div className="admin-sender-info">
-                    <div className="admin-sender-name">{senderName}</div>
-                    <div className="admin-sender-email">
-                      <a href={`mailto:${selectedRecord.email}`} style={{ color: '#38bdf8' }}>
-                        {(selectedRecord.email as string) || '-'}
-                      </a>
+              return (
+                <div
+                  className="admin-modal-backdrop"
+                  onClick={() => setSelectedRecord(null)}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+                    {/* Modal Header */}
+                    <div className="admin-modal-header">
+                      <div>
+                        <h3 className="admin-modal-title">Submission Details</h3>
+                        <div className="admin-modal-badge-row">
+                          <span className={`admin-badge ${badgeClass}`}>{categoryLabel}</span>
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>
+                            Received {formatDate((selectedRecord.createdAt as string) || '')}
+                          </span>
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        className="admin-copy-chip"
-                        onClick={() => copyEmail((selectedRecord.email as string) || '')}
+                        className="admin-modal-close"
+                        onClick={() => setSelectedRecord(null)}
+                        title="Close"
                       >
-                        {copied ? '✓ Copied' : '📋 Copy'}
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Sender Identity Card */}
+                    <div className="admin-sender-box">
+                      <div className="admin-avatar">{initial}</div>
+                      <div className="admin-sender-info">
+                        <div className="admin-sender-name">{senderName}</div>
+                        <div className="admin-sender-email">
+                          <a href={`mailto:${userEmail}`} style={{ color: '#38bdf8' }}>
+                            {userEmail || '-'}
+                          </a>
+                          {userEmail && (
+                            <button
+                              type="button"
+                              className="admin-copy-chip"
+                              onClick={() => copyEmail(userEmail)}
+                            >
+                              {copiedEmail ? '✓ Copied' : '📋 Copy Email'}
+                            </button>
+                          )}
+                        </div>
+
+                        {userPhone && (
+                          <div
+                            className="admin-sender-email"
+                            style={{ marginTop: '8px', color: '#f5f7f8' }}
+                          >
+                            <span>📞</span>
+                            <a
+                              href={`tel:${userPhone}`}
+                              style={{ color: '#38bdf8', fontWeight: 500 }}
+                            >
+                              {userPhone}
+                            </a>
+                            <button
+                              type="button"
+                              className="admin-copy-chip"
+                              onClick={() => copyPhone(userPhone)}
+                            >
+                              {copiedPhone ? '✓ Copied' : '📋 Copy Phone'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Submission Details Grid */}
+                    <div className="admin-detail-grid">
+                      {Boolean(userPhone) && (
+                        <div className="admin-detail-block">
+                          <div className="admin-detail-label">Phone Number</div>
+                          <div className="admin-detail-value" style={{ color: '#38bdf8' }}>
+                            <a
+                              href={`tel:${userPhone}`}
+                              style={{ color: '#38bdf8', textDecoration: 'none' }}
+                            >
+                              {userPhone}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {Boolean(selectedRecord.city) && (
+                        <div className="admin-detail-block">
+                          <div className="admin-detail-label">City / Location</div>
+                          <div className="admin-detail-value">
+                            {(selectedRecord.city as string) || '-'}
+                          </div>
+                        </div>
+                      )}
+
+                      {Boolean(selectedRecord.business) && (
+                        <div className="admin-detail-block">
+                          <div className="admin-detail-label">Business / Venue</div>
+                          <div className="admin-detail-value">
+                            {(selectedRecord.business as string) || '-'}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="admin-detail-block">
+                        <div className="admin-detail-label">Database Record ID</div>
+                        <div
+                          className="admin-detail-value"
+                          style={{ fontSize: '12px', fontFamily: 'monospace', color: '#94a3b8' }}
+                        >
+                          {id}
+                        </div>
+                      </div>
+
+                      <div className="admin-detail-block">
+                        <div className="admin-detail-label">Storage Status</div>
+                        <div
+                          className="admin-detail-value"
+                          style={{ color: '#22c55e', fontSize: '12px' }}
+                        >
+                          ● Stored Live in MongoDB Atlas
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Requirements / Message Box */}
+                    {Boolean(selectedRecord.message) ? (
+                      <div className="admin-detail-full">
+                        <div className="admin-detail-label">
+                          {isHospitality
+                            ? 'Requirements (Sizes, volumes, locations, timing)'
+                            : 'Message Content'}
+                        </div>
+                        <div className="admin-message-content">
+                          {(selectedRecord.message as string) || '-'}
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="admin-detail-full"
+                        style={{
+                          background: 'rgba(3, 20, 27, 0.3)',
+                          borderStyle: 'dashed',
+                        }}
+                      >
+                        <div className="admin-detail-label">Message / Note</div>
+                        <div style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>
+                          No additional message text attached to this entry.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Modal Actions Footer */}
+                    <div className="admin-modal-footer">
+                      <button
+                        type="button"
+                        className="admin-btn-danger"
+                        disabled={deletingId === id}
+                        onClick={() => handleDelete(targetCollection, id)}
+                      >
+                        <span>🗑 Delete from MongoDB</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="admin-btn-close"
+                        onClick={() => setSelectedRecord(null)}
+                      >
+                        Close
                       </button>
                     </div>
                   </div>
                 </div>
-
-                {/* Submission Details Grid */}
-                <div className="admin-detail-grid">
-                  {Boolean(selectedRecord.city) && (
-                    <div className="admin-detail-block">
-                      <div className="admin-detail-label">City / Location</div>
-                      <div className="admin-detail-value">{(selectedRecord.city as string) || '-'}</div>
-                    </div>
-                  )}
-
-                  {Boolean(selectedRecord.business) && (
-                    <div className="admin-detail-block">
-                      <div className="admin-detail-label">Business / Venue</div>
-                      <div className="admin-detail-value">{(selectedRecord.business as string) || '-'}</div>
-                    </div>
-                  )}
-
-                  <div className="admin-detail-block">
-                    <div className="admin-detail-label">Database Record ID</div>
-                    <div
-                      className="admin-detail-value"
-                      style={{ fontSize: '12px', fontFamily: 'monospace', color: '#94a3b8' }}
-                    >
-                      {id}
-                    </div>
-                  </div>
-
-                  <div className="admin-detail-block">
-                    <div className="admin-detail-label">Storage Status</div>
-                    <div className="admin-detail-value" style={{ color: '#22c55e', fontSize: '12px' }}>
-                      ● Stored in MongoDB Atlas
-                    </div>
-                  </div>
-                </div>
-
-                {/* Requirements / Message Box */}
-                {Boolean(selectedRecord.message) && (
-                  <div className="admin-detail-full">
-                    <div className="admin-detail-label">
-                      {isHospitality ? 'Requirements (Sizes, volumes, timing)' : 'Message Content'}
-                    </div>
-                    <div className="admin-message-content">
-                      {(selectedRecord.message as string) || '-'}
-                    </div>
-                  </div>
-                )}
-
-                {/* Modal Actions Footer */}
-                <div className="admin-modal-footer">
-                  <button
-                    type="button"
-                    className="admin-btn-danger"
-                    disabled={deletingId === id}
-                    onClick={() => handleDelete(targetCollection, id)}
-                  >
-                    <span>🗑 Delete from MongoDB</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="admin-btn-close"
-                    onClick={() => setSelectedRecord(null)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
+              )
+            })(),
+            document.body
+          )}
       </div>
     </div>
   )

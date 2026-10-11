@@ -4,6 +4,7 @@
   "cleanUrls": false,
   "trailingSlash": false,
   "rewrites": [
+    { "source": "/api/admin/(.*)", "destination": "/api/admin/$1" },
     { "source": "/sidadmin", "destination": "/index.html" }
   ],
   "headers": [
