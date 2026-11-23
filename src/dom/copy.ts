@@ -112,6 +112,7 @@ export const FOOTER = {
   subline: 'WATER, REIMAGINED.',
   explore: 'Explore',
   contact: 'Contact',
+  email: 'info@ionadrinks.com',
   privacy: 'Privacy',
   terms: 'Terms',
   copyright: '© IONA',
@@ -142,8 +143,15 @@ export const CHROME = {
   skip: 'Skip to Footer',
 } as const
 
+/** The company inbox: shown wherever the site offers a way to get in touch. */
+export const COMPANY_EMAIL = 'info@ionadrinks.com'
+/** Opens a Gmail compose window addressed to the company inbox. */
+export const COMPANY_EMAIL_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${COMPANY_EMAIL}`
+
 export const CONTACT = {
   title: 'Contact',
+  /** Direct-mail line under every form. */
+  mailPrefix: 'Or email us at',
   close: 'Close',
   name: 'Name',
   email: 'Email',
@@ -229,7 +237,7 @@ export const LABEL_BACK = {
     note: '(Incl. of all taxes)',
   },
   barcode: '8 906123 456789',
-  maker: ['MANUFACTURED & MARKETED BY:', 'IONA BEVERAGES PVT. LTD.', 'Mumbai, India – 400001', 'For feedback or queries:', 'hello@iona.com | www.iona.com'],
+  maker: ['MANUFACTURED & MARKETED BY:', 'IONA BEVERAGES PVT. LTD.', 'Mumbai, India – 400001', 'For feedback or queries:', 'info@ionadrinks.com'],
 } as const
 
 /** Carton front: the only lines to set if the type is redrawn. */

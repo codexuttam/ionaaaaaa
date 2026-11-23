@@ -3,7 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { duck } from '../experience/audio'
 import { transport } from '../experience/scroller'
 import { CONTACT_HASH, CONTACT_OPEN_EVENT, openContact, takeContactOpener, takeContactOptions, type ContactKind } from './contact'
-import { CONTACT } from './copy'
+import { COMPANY_EMAIL, COMPANY_EMAIL_URL, CONTACT } from './copy'
 
 // The contact overlay (docs/04 "Contact"): a native modal dialog with three forms,
 // a message (Contact), the launch list and a hospitality enquiry (both opened from
@@ -229,6 +229,9 @@ export function ContactDialog() {
             </div>
           </form>
         )}
+        <p className="contact__intro contact__mail">
+          {CONTACT.mailPrefix} <a href={COMPANY_EMAIL_URL} target="_blank" rel="noopener noreferrer">{COMPANY_EMAIL}</a>
+        </p>
       </div>
     </dialog>
   )

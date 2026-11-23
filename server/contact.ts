@@ -5,12 +5,14 @@
 // and preview stand-in in vite.config.ts.
 //
 // Delivery, in order of preference, from the host's environment variables:
+//   SMTP_USER + SMTP_PASS (Titan mailbox)                 notification to the inbox + confirmation to the visitor (server/mail.ts)
 //   RESEND_API_KEY + CONTACT_TO (+ optional CONTACT_FROM)  transactional mail through the Resend HTTP API
 //   CONTACT_WEBHOOK_URL                                    a JSON POST to any inbox automation (Slack, Make, Zapier, a CRM)
 // With neither configured the handler answers 503 and the dialog shows its error line.
 // It never reports success for a message that was not delivered.
 
 import { saveContactSubmission } from './db.ts'
+import { sendFormMails, smtpConfigured, type MailEnv } from './mail.ts'
 
 /** Which form sent it: a message, a launch-list signup, or a hospitality enquiry (src/dom/ContactDialog.tsx). */
 export type ContactKind = 'contact' | 'launch' | 'hospitality'
@@ -18,7 +20,7 @@ export type ContactKind = 'contact' | 'launch' | 'hospitality'
 /** `message` is the visitor's message, or a hospitality enquiry's requirements; fields a form does not have are empty. */
 export type ContactMessage = { kind: ContactKind; name: string; email: string; phone: string; city: string; business: string; message: string }
 
-export type ContactEnv = {
+export type ContactEnv = MailEnv & {
   RESEND_API_KEY?: string
   CONTACT_TO?: string
   CONTACT_FROM?: string
@@ -170,15 +172,24 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
 
   const mongoUri = env.MONGODB_URI || process.env.MONGODB_URI
   const viaMongo = Boolean(mongoUri)
+  const viaSmtp = smtpConfigured(env)
   const viaMail = Boolean(env.RESEND_API_KEY && env.CONTACT_TO)
   const viaWebhook = Boolean(env.CONTACT_WEBHOOK_URL)
-  if (!viaMongo && !viaMail && !viaWebhook) return json(503, { ok: false, error: 'contact delivery is not configured' })
+  if (!viaMongo && !viaSmtp && !viaMail && !viaWebhook) return json(503, { ok: false, error: 'contact delivery is not configured' })
 
   try {
     if (viaMongo) {
       await saveContactSubmission(parsed.message, mongoUri)
     }
-    if (viaMail) {
+    if (viaSmtp) {
+      // the submission is already saved when MongoDB is set, so a mail failure is logged, not shown
+      try {
+        await sendFormMails(env, parsed.message)
+      } catch (err) {
+        if (!viaMongo) throw err
+        console.error('[contact] SMTP delivery failed (submission saved):', err)
+      }
+    } else if (viaMail) {
       await sendResend(env, parsed.message)
     } else if (viaWebhook) {
       await sendWebhook(env, parsed.message)

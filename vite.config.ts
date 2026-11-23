@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { MAX_BODY, parseContact } from './server/contact.ts'
 import { saveContactSubmission } from './server/db.ts'
+import { sendFormMails, smtpConfigured, type MailEnv } from './server/mail.ts'
 import { handleAdmin } from './server/admin.ts'
 
 // Dev and preview handler for /api/admin
@@ -50,7 +51,7 @@ function adminEndpoint(mongoUri?: string, adminPassword?: string): Plugin {
 }
 
 // Dev and preview handler for POST /api/contact. It validates submissions and saves them to MongoDB if configured.
-function contactEndpoint(mongoUri?: string): Plugin {
+function contactEndpoint(mongoUri?: string, mailEnv: MailEnv = {}): Plugin {
   const handler: Connect.NextHandleFunction = (req, res, next) => {
     if (req.url !== '/api/contact') return next()
     const answer = (status: number, ok: boolean) => {
@@ -85,6 +86,15 @@ function contactEndpoint(mongoUri?: string): Plugin {
         }
       } else {
         console.log('[contact] stand-in (MONGODB_URI not set):', JSON.stringify(parsed.message))
+      }
+      if (smtpConfigured(mailEnv)) {
+        try {
+          await sendFormMails(mailEnv, parsed.message)
+          console.log('[contact] emails sent via SMTP for', parsed.message.email)
+        } catch (err) {
+          console.error('[contact] SMTP error:', err)
+          if (!mongoUri) return answer(500, false)
+        }
       }
       answer(200, true)
     })
@@ -209,7 +219,7 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       react(),
       adminEndpoint(mongoUri, adminPassword),
-      contactEndpoint(mongoUri),
+      contactEndpoint(mongoUri, allEnv as MailEnv),
       siteMeta(env.VITE_SITE_URL ?? ''),
       previewHeaders(),
     ],

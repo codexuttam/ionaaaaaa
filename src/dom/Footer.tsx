@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react'
 import { scrollToBeat, scrollToSection, scrollToTop } from '../experience/scroller'
 import type { SceneId } from '../experience/scenes'
 import { openContact } from './contact'
-import { FOOTER } from './copy'
+import { COMPANY_EMAIL_URL, FOOTER } from './copy'
 
 type Props = {
   /** Film: links seek the film. Stills: plain anchors to the sections. */
@@ -89,6 +89,11 @@ export function Footer({ mode }: Props) {
                 <button type="button" className="footer__link" onClick={(e) => openContact(e.currentTarget)}>
                   {FOOTER.contact}
                 </button>
+              </li>
+              <li>
+                <a className="footer__link" href={COMPANY_EMAIL_URL} target="_blank" rel="noopener noreferrer">
+                  {FOOTER.email}
+                </a>
               </li>
               <li>
                 <a className="footer__link" href={PRIVACY_URL}>
